@@ -2,6 +2,7 @@ import { stravaFetch } from '@/lib/strava/client'
 import type { StravaActivity } from '@/lib/strava/types'
 import { upsertActivities } from '@/lib/db/activities'
 import { getSetting, setSetting } from '@/lib/db/settings'
+import { backfillMetrics } from '@/lib/metrics/backfill'
 import type { Activity, ActivityType } from '@/types'
 
 const RUNNING_TYPES = new Set(['Run', 'TrailRun', 'VirtualRun'])
@@ -68,5 +69,6 @@ export async function syncActivities(
   }
 
   await setSetting('lastSyncedAt', syncStart)
+  await backfillMetrics()
   return { fetched: totalFetched }
 }
