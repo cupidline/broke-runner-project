@@ -17,3 +17,7 @@ export function useActivity(id: string): Activity | undefined {
 export function useActivityCount(): number {
   return useLiveQuery(() => db.activities.count(), [], 0)
 }
+
+export function useLatestActivity(): Activity | undefined {
+  return useLiveQuery(() => db.activities.orderBy('startDate').last(), [])
+}
