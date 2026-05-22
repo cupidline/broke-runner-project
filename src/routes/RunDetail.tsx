@@ -1,7 +1,267 @@
-export default function RunDetail() {
+import { useParams, useNavigate } from 'react-router-dom'
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { useActivity } from '@/hooks/useActivities'
+import { useActivityStreams } from '@/hooks/useActivityStreams'
+import { useSettings } from '@/hooks/useSettings'
+import { calcDecoupling } from '@/lib/metrics/decoupling'
+import { calcZoneDistribution } from '@/lib/metrics/zones'
+import { formatPace, formatDistance, formatDuration, formatRelativeDate } from '@/lib/utils/format'
+import Card from '@/components/ui/Card'
+import Badge from '@/components/ui/Badge'
+import { ArrowLeft, Heart, Timer, TrendingUp, Mountain } from 'lucide-react'
+
+// ── Zone bar ──────────────────────────────────────────────────────────────────
+
+const ZONE_COLORS = {
+  Z1: '#34D399',
+  Z2: '#7DD3FC',
+  Z3: '#F59E0B',
+  Z4: '#F97316',
+  Z5: '#EF4444',
+}
+
+function ZoneBar({ dist }: { dist: Record<string, number> }) {
+  const zones = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold text-text-primary">Run Detail</h1>
+    <div className="space-y-1.5">
+      {/* Stacked bar */}
+      <div className="flex h-3 rounded-full overflow-hidden">
+        {zones.map(z => (
+          <div
+            key={z}
+            style={{ width: `${(dist[z] ?? 0) * 100}%`, background: ZONE_COLORS[z] }}
+          />
+        ))}
+      </div>
+      {/* Legend */}
+      <div className="flex gap-3 flex-wrap">
+        {zones.map(z => (
+          <span key={z} className="flex items-center gap-1 text-xs text-text-secondary">
+            <span className="w-2 h-2 rounded-full inline-block" style={{ background: ZONE_COLORS[z] }} />
+            {z} {Math.round((dist[z] ?? 0) * 100)}%
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── HR chart ──────────────────────────────────────────────────────────────────
+
+// Downsample stream to ~120 points for chart perf
+function downsample<T>(arr: T[], target = 120): T[] {
+  if (arr.length <= target) return arr
+  const step = arr.length / target
+  return Array.from({ length: target }, (_, i) => arr[Math.round(i * step)])
+}
+
+interface HRTooltipProps {
+  active?: boolean
+  payload?: Array<{ value: number }>
+  label?: number
+}
+
+function HRTooltip({ active, payload, label }: HRTooltipProps) {
+  if (!active || !payload?.length) return null
+  const mins = Math.floor((label ?? 0) / 60)
+  const secs = ((label ?? 0) % 60).toString().padStart(2, '0')
+  return (
+    <div className="bg-surface border border-muted/30 rounded-lg px-3 py-2 text-xs">
+      <p className="text-text-secondary">{mins}:{secs}</p>
+      <p className="text-accent font-medium tabular-nums">{Math.round(payload[0].value)} bpm</p>
+    </div>
+  )
+}
+
+function HRChart({ hrStream, timeStream }: { hrStream: number[]; timeStream: number[] }) {
+  const data = downsample(
+    hrStream.map((hr, i) => ({ t: timeStream[i] ?? i, hr })),
+  )
+  return (
+    <ResponsiveContainer width="100%" height={140}>
+      <AreaChart data={data} margin={{ top: 4, right: 4, bottom: 0, left: -18 }}>
+        <defs>
+          <linearGradient id="hrGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%"  stopColor="#7DD3FC" stopOpacity={0.3} />
+            <stop offset="95%" stopColor="#7DD3FC" stopOpacity={0}   />
+          </linearGradient>
+        </defs>
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(82,82,91,0.2)" />
+        <XAxis dataKey="t" hide />
+        <YAxis tick={{ fill: '#A1A1AA', fontSize: 10 }} domain={['auto', 'auto']} />
+        <Tooltip content={<HRTooltip />} />
+        <Area
+          type="monotone" dataKey="hr"
+          stroke="#7DD3FC" strokeWidth={1.5}
+          fill="url(#hrGrad)" dot={false}
+        />
+      </AreaChart>
+    </ResponsiveContainer>
+  )
+}
+
+// ── Main route ────────────────────────────────────────────────────────────────
+
+export default function RunDetail() {
+  const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
+  const activity = useActivity(id ?? '')
+  const settings = useSettings()
+  const { streams, state: streamsState } = useActivityStreams(id ?? '', activity?.stravaId)
+
+  if (!activity) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-text-secondary">Run not found.</p>
+      </div>
+    )
+  }
+
+  const hrStream = streams.heartrate ?? []
+  const timeStream = streams.time ?? []
+  const paceStream = (streams.velocity_smooth ?? []).map(v =>
+    v > 0.5 ? 1000 / v : 0,
+  )
+  const hasStreams = hrStream.length > 0
+
+  const maxHR = settings?.maxHR ?? 192
+  const restHR = settings?.restHR ?? 53
+  const zoneDist = hasStreams ? calcZoneDistribution(hrStream, maxHR, restHR) : null
+  const decoupling = hasStreams && paceStream.length > 0
+    ? calcDecoupling(hrStream, paceStream)
+    : null
+
+  return (
+    <div className="pb-8">
+      {/* Back nav */}
+      <button
+        onClick={() => navigate(-1)}
+        className="flex items-center gap-2 px-4 pt-4 pb-2 text-text-secondary hover:text-text-primary transition-colors"
+        aria-label="Go back"
+      >
+        <ArrowLeft size={18} />
+        <span className="text-sm">Runs</span>
+      </button>
+
+      <div className="px-4 space-y-4">
+        {/* Title */}
+        <div>
+          <h1 className="text-xl font-bold text-text-primary leading-tight">{activity.name}</h1>
+          <p className="text-text-secondary text-sm mt-0.5">
+            {formatRelativeDate(activity.startDate)} ·{' '}
+            {new Date(activity.startDate).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
+          </p>
+        </div>
+
+        {/* Stats grid */}
+        <Card className="grid grid-cols-3 gap-y-4 text-center">
+          <Stat label="Distance" value={formatDistance(activity.distanceMeters)} icon={<TrendingUp size={14} />} />
+          <Stat
+            label="Pace"
+            value={activity.avgPaceSecPerKm ? formatPace(activity.avgPaceSecPerKm) : '—'}
+            icon={<Timer size={14} />}
+          />
+          <Stat label="Duration" value={formatDuration(activity.durationSeconds)} icon={<Timer size={14} />} />
+          {activity.avgHeartRate && (
+            <Stat label="Avg HR" value={`${Math.round(activity.avgHeartRate)} bpm`} icon={<Heart size={14} />} />
+          )}
+          {activity.maxHeartRate && (
+            <Stat label="Max HR" value={`${Math.round(activity.maxHeartRate)} bpm`} icon={<Heart size={14} />} />
+          )}
+          {activity.elevationGainMeters > 0 && (
+            <Stat label="Elevation" value={`${Math.round(activity.elevationGainMeters)} m`} icon={<Mountain size={14} />} />
+          )}
+        </Card>
+
+        {/* Badges */}
+        <div className="flex flex-wrap gap-2">
+          {activity.trimp !== undefined && (
+            <Badge label={`TRIMP ${Math.round(activity.trimp)}`} color="accent" />
+          )}
+          {activity.type !== 'Run' && (
+            <Badge label={activity.type} color="muted" />
+          )}
+          {activity.trimpSource === 'rpe' && (
+            <Badge label={`RPE ${activity.rpe}`} color="muted" />
+          )}
+        </div>
+
+        {/* Streams section */}
+        {streamsState === 'loading' && (
+          <Card className="flex items-center justify-center h-20">
+            <p className="text-text-secondary text-sm">Loading HR data…</p>
+          </Card>
+        )}
+
+        {streamsState === 'error' && (
+          <Card>
+            <p className="text-text-secondary text-sm">Could not load stream data.</p>
+          </Card>
+        )}
+
+        {hasStreams && (
+          <>
+            {/* HR chart */}
+            <Card>
+              <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+                Heart Rate
+              </p>
+              <HRChart hrStream={hrStream} timeStream={timeStream} />
+            </Card>
+
+            {/* Zone distribution */}
+            {zoneDist && (
+              <Card>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+                  HR Zone Distribution
+                </p>
+                <ZoneBar dist={zoneDist} />
+              </Card>
+            )}
+
+            {/* Decoupling */}
+            {decoupling !== null && (
+              <Card className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+                    Aerobic Decoupling
+                  </p>
+                  <p className="text-xs text-text-muted mt-1">
+                    {Math.abs(decoupling) < 5
+                      ? 'Well coupled — good aerobic efficiency'
+                      : 'HR drifted — consider slowing down'}
+                  </p>
+                </div>
+                <span className={`text-2xl font-bold tabular-nums ${
+                  Math.abs(decoupling) < 5 ? 'text-success' : Math.abs(decoupling) < 10 ? 'text-warning' : 'text-danger'
+                }`}>
+                  {decoupling > 0 ? '+' : ''}{decoupling.toFixed(1)}%
+                </span>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function Stat({
+  label,
+  value,
+  icon,
+}: {
+  label: string
+  value: string
+  icon?: React.ReactNode
+}) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <p className="text-xl font-bold tabular-nums text-text-primary leading-tight">{value}</p>
+      <p className="text-xs text-text-secondary flex items-center gap-1">
+        {icon}
+        {label}
+      </p>
     </div>
   )
 }
