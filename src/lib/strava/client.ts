@@ -1,5 +1,5 @@
 import { refreshAccessToken } from './auth'
-import { getSetting, setSetting } from '@/lib/db/settings'
+import { getSetting, setSetting, deleteSetting } from '@/lib/db/settings'
 
 const BASE = 'https://www.strava.com/api/v3'
 
@@ -10,8 +10,8 @@ async function getValidToken(): Promise<string> {
 
   if (!token || !refresh) throw new Error('Not authenticated')
 
-  // Refresh if token expires within the next 60 seconds
-  if (expiresAt && Date.now() / 1000 > expiresAt - 60) {
+  // Refresh if token expires within the next 60 seconds, or expiresAt unknown
+  if (!expiresAt || Date.now() / 1000 > expiresAt - 60) {
     const fresh = await refreshAccessToken(refresh)
     await setSetting('stravaAccessToken', fresh.access_token)
     await setSetting('stravaRefreshToken', fresh.refresh_token)
@@ -20,6 +20,16 @@ async function getValidToken(): Promise<string> {
   }
 
   return token
+}
+
+async function forceRefreshToken(): Promise<string> {
+  const refresh = await getSetting('stravaRefreshToken')
+  if (!refresh) throw new Error('Not authenticated')
+  const fresh = await refreshAccessToken(refresh)
+  await setSetting('stravaAccessToken', fresh.access_token)
+  await setSetting('stravaRefreshToken', fresh.refresh_token)
+  await setSetting('stravaTokenExpiresAt', fresh.expires_at)
+  return fresh.access_token
 }
 
 export async function stravaFetch<T>(path: string, init?: RequestInit): Promise<T> {
@@ -35,6 +45,28 @@ export async function stravaFetch<T>(path: string, init?: RequestInit): Promise<
   if (res.status === 429) {
     const retryAfter = Number(res.headers.get('X-RateLimit-Limit') ?? 60)
     throw new Error(`Rate limited. Retry after ${retryAfter}s.`)
+  }
+
+  // On 401, try one token refresh and retry
+  if (res.status === 401) {
+    let freshToken: string
+    try {
+      freshToken = await forceRefreshToken()
+    } catch {
+      await deleteSetting('stravaAccessToken')
+      await deleteSetting('stravaRefreshToken')
+      await deleteSetting('stravaTokenExpiresAt')
+      throw new Error('Strava session expired. Please reconnect.')
+    }
+    const retry = await fetch(`${BASE}${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${freshToken}`,
+        ...init?.headers,
+      },
+    })
+    if (!retry.ok) throw new Error(`Strava API ${retry.status}: ${path}`)
+    return retry.json() as Promise<T>
   }
 
   if (!res.ok) throw new Error(`Strava API ${res.status}: ${path}`)
