@@ -1,9 +1,11 @@
+import { useEffect, useRef } from 'react'
 import { setSetting } from '@/lib/db/settings'
 import type { RecommendationMode } from '@/types'
 import { useMetricsHistory } from '@/hooks/useMetrics'
 import { useLiveMetrics } from '@/hooks/useLiveMetrics'
 import { useActivities, useLatestActivity, useActivityCount } from '@/hooks/useActivities'
 import { useSettings } from '@/hooks/useSettings'
+import { useSync } from '@/hooks/useSync'
 import { buildRecommendation, buildTomorrowRecommendation } from '@/lib/metrics/recommendation'
 import { projectPeak } from '@/lib/metrics/readiness'
 import ReadinessCard from '@/components/home/ReadinessCard'
@@ -11,6 +13,7 @@ import FitnessFormCards from '@/components/home/FitnessFormCards'
 import RecommendationCard from '@/components/home/recommendation/RecommendationCard'
 import LastRunCard from '@/components/home/LastRunCard'
 import { useNavigate } from 'react-router-dom'
+import { RefreshCw } from 'lucide-react'
 
 const MODES: { value: RecommendationMode; label: string }[] = [
   { value: 'conservative', label: 'Conservative' },
@@ -68,6 +71,8 @@ function NoDataState() {
 }
 
 
+const AUTO_SYNC_INTERVAL_MS = 60 * 60 * 1000 // 1 hour
+
 export default function Home() {
   const metrics = useLiveMetrics()
   const history = useMetricsHistory(30)
@@ -75,7 +80,17 @@ export default function Home() {
   const latestActivity = useLatestActivity()
   const activityCount = useActivityCount()
   const settings = useSettings()
+  const { sync, state: syncState, lastSyncedAt } = useSync()
+  const autoSyncAttempted = useRef(false)
 
+  // Auto-sync on open if last sync was > 1 hour ago
+  useEffect(() => {
+    if (autoSyncAttempted.current) return
+    if (lastSyncedAt === undefined) return
+    autoSyncAttempted.current = true
+    const lastSync = lastSyncedAt ? new Date(lastSyncedAt).getTime() : 0
+    if (Date.now() - lastSync > AUTO_SYNC_INTERVAL_MS) sync()
+  }, [lastSyncedAt])
 
   if (activityCount === 0) return <NoDataState />
 
@@ -118,7 +133,17 @@ export default function Home() {
 
   return (
     <div className="p-4 space-y-3 pb-6">
-<ReadinessCard readiness={metrics.readiness} tsb={metrics.tsb} peak={peak} asOf={metrics.asOf} />
+      <div className="flex items-center justify-end">
+        <button
+          onClick={sync}
+          disabled={syncState === 'syncing'}
+          className="p-1.5 rounded-lg text-text-muted hover:text-text-primary transition-colors disabled:opacity-40"
+          aria-label="Refresh"
+        >
+          <RefreshCw size={16} className={syncState === 'syncing' ? 'animate-spin' : ''} />
+        </button>
+      </div>
+      <ReadinessCard readiness={metrics.readiness} tsb={metrics.tsb} peak={peak} asOf={metrics.asOf} />
       <FitnessFormCards current={metrics} history={history} activities={activities} />
       <ModeToggle mode={settings.recommendationMode} />
       <RecommendationCard workout={today} when="Today" />
