@@ -1,5 +1,7 @@
 import type { Activity, ReadinessBand, RecommendationMode } from '@/types'
 import type { Workout, WorkoutType } from '@/types/workout'
+
+export type { Workout as Recommendation }
 import { calcZoneBounds } from './zones'
 import { calcReadiness, readinessBand } from './readiness'
 import { predictPaceForWorkout } from './pacePrediction'
