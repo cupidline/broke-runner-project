@@ -2,16 +2,20 @@ import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { exchangeCode } from '@/lib/strava/auth'
 import { setSetting } from '@/lib/db/settings'
+import { syncActivities } from '@/lib/sync/orchestrator'
 
 export default function AuthCallback() {
   const navigate = useNavigate()
   const [error, setError] = useState<string | null>(null)
+  const [status, setStatus] = useState('Connecting to Strava…')
   const didRun = useRef(false)
 
   useEffect(() => {
     if (didRun.current) return
     didRun.current = true
 
+    // main.tsx forwards Strava's ?code= to /#/auth/callback?code=
+    // so by the time we're here, the code is in location.search
     const params = new URLSearchParams(window.location.search)
     const code = params.get('code')
     const err = params.get('error')
@@ -26,6 +30,8 @@ export default function AuthCallback() {
         await setSetting('stravaAccessToken', tokens.access_token)
         await setSetting('stravaRefreshToken', tokens.refresh_token)
         await setSetting('stravaTokenExpiresAt', tokens.expires_at)
+        setStatus('Syncing activities…')
+        await syncActivities()
         navigate('/', { replace: true })
       })
       .catch(e => setError(e instanceof Error ? e.message : 'Unknown error'))
@@ -47,7 +53,7 @@ export default function AuthCallback() {
 
   return (
     <div className="flex items-center justify-center h-screen">
-      <p className="text-text-secondary">Connecting to Strava…</p>
+      <p className="text-text-secondary">{status}</p>
     </div>
   )
 }

@@ -2,9 +2,9 @@ import { NavLink } from 'react-router-dom'
 import { Home, TrendingUp, Zap, Activity, Settings } from 'lucide-react'
 
 const tabs = [
-  { to: '/', icon: Home, label: 'Home' },
   { to: '/trends', icon: TrendingUp, label: 'Trends' },
   { to: '/load', icon: Zap, label: 'Load' },
+  { to: '/', icon: Home, label: 'Home' },
   { to: '/runs', icon: Activity, label: 'Runs' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ] as const

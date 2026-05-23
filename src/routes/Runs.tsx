@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useActivities } from '@/hooks/useActivities'
-import { formatPace, formatRelativeDate, formatTRIMP } from '@/lib/utils/format'
+import { formatPace, formatRelativeDate } from '@/lib/utils/format'
+import { TRIMPBarCompact } from '@/components/ui/TRIMPBar'
 import type { ActivityType } from '@/types'
 
 // ── Filter types ──────────────────────────────────────────────────────────────
@@ -55,9 +56,7 @@ function ActivityRow({ a }: { a: ReturnType<typeof useActivities>[number] }) {
             ) : null}
           </div>
           {a.trimp !== undefined && (
-            <span className="text-xs tabular-nums font-medium text-accent w-8 text-right">
-              {formatTRIMP(a.trimp)}
-            </span>
+            <TRIMPBarCompact trimp={a.trimp} />
           )}
         </div>
       </Link>
@@ -146,7 +145,7 @@ export default function Runs() {
         <span className="text-xs text-text-muted">Activity</span>
         <div className="flex gap-4 text-xs text-text-muted">
           <span>Dist / Pace</span>
-          <span className="w-8 text-right">TRIMP</span>
+          <span className="w-16 text-right">TRIMP</span>
         </div>
       </div>
 

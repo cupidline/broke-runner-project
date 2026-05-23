@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
 import { useActivity } from '@/hooks/useActivities'
@@ -6,8 +7,11 @@ import { useSettings } from '@/hooks/useSettings'
 import { calcDecoupling } from '@/lib/metrics/decoupling'
 import { calcZoneDistribution } from '@/lib/metrics/zones'
 import { formatPace, formatDistance, formatDuration, formatRelativeDate } from '@/lib/utils/format'
+import { updateActivity } from '@/lib/db/activities'
+import { backfillMetrics } from '@/lib/metrics/backfill'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
+import { TRIMPBar } from '@/components/ui/TRIMPBar'
 import { ArrowLeft, Heart, Timer, TrendingUp, Mountain } from 'lucide-react'
 
 // ── Zone bar ──────────────────────────────────────────────────────────────────
@@ -108,6 +112,9 @@ export default function RunDetail() {
   const activity = useActivity(id ?? '')
   const settings = useSettings()
   const { streams, state: streamsState } = useActivityStreams(id ?? '', activity?.stravaId)
+  const [rpe, setRpe] = useState<number | null>(null)
+  const [rpeSaving, setRpeSaving] = useState(false)
+  const [rpeSaved, setRpeSaved] = useState(false)
 
   if (!activity) {
     return (
@@ -173,11 +180,15 @@ export default function RunDetail() {
           )}
         </Card>
 
+        {/* TRIMP bar */}
+        {activity.trimp !== undefined && (
+          <Card>
+            <TRIMPBar trimp={activity.trimp} />
+          </Card>
+        )}
+
         {/* Badges */}
         <div className="flex flex-wrap gap-2">
-          {activity.trimp !== undefined && (
-            <Badge label={`TRIMP ${Math.round(activity.trimp)}`} color="accent" />
-          )}
           {activity.type !== 'Run' && (
             <Badge label={activity.type} color="muted" />
           )}
@@ -241,8 +252,91 @@ export default function RunDetail() {
             )}
           </>
         )}
+
+        {/* RPE input */}
+        <RPECard
+          currentRpe={activity.rpe}
+          pendingRpe={rpe}
+          saving={rpeSaving}
+          saved={rpeSaved}
+          hasHR={!!activity.avgHeartRate}
+          onRpeChange={setRpe}
+          onSave={async () => {
+            const value = rpe ?? activity.rpe
+            if (!value) return
+            setRpeSaving(true)
+            const updated = {
+              ...activity,
+              rpe: value,
+              trimpSource: activity.avgHeartRate ? activity.trimpSource : 'rpe' as const,
+            }
+            await updateActivity(updated)
+            if (!activity.avgHeartRate) await backfillMetrics()
+            setRpeSaving(false)
+            setRpeSaved(true)
+            setTimeout(() => setRpeSaved(false), 2000)
+          }}
+        />
       </div>
     </div>
+  )
+}
+
+const RPE_LABELS: Record<number, string> = {
+  1: 'Very easy', 2: 'Easy', 3: 'Moderate', 4: 'Somewhat hard',
+  5: 'Hard', 6: 'Hard+', 7: 'Very hard', 8: 'Very hard+',
+  9: 'Very very hard', 10: 'Max effort',
+}
+
+function RPECard({
+  currentRpe, pendingRpe, saving, saved, hasHR, onRpeChange, onSave,
+}: {
+  currentRpe?: number
+  pendingRpe: number | null
+  saving: boolean
+  saved: boolean
+  hasHR: boolean
+  onRpeChange: (v: number) => void
+  onSave: () => void
+}) {
+  const display = pendingRpe ?? currentRpe
+  return (
+    <Card>
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+        Rate this run (RPE)
+      </p>
+      <div className="flex gap-1.5 flex-wrap mb-3">
+        {[1,2,3,4,5,6,7,8,9,10].map(n => (
+          <button
+            key={n}
+            onClick={() => onRpeChange(n)}
+            aria-pressed={display === n}
+            className={`w-9 h-9 rounded-md text-sm font-bold tabular-nums transition-colors ${
+              display === n
+                ? 'bg-accent text-bg'
+                : 'bg-bg border border-muted/40 text-text-secondary hover:border-accent/50'
+            }`}
+          >
+            {n}
+          </button>
+        ))}
+      </div>
+      {display && (
+        <p className="text-xs text-text-muted mb-3">{display} — {RPE_LABELS[display]}</p>
+      )}
+      {!hasHR && (
+        <p className="text-xs text-warning mb-2">
+          No HR data — RPE will be used to estimate TRIMP
+        </p>
+      )}
+      <button
+        onClick={onSave}
+        disabled={saving || (!pendingRpe && !currentRpe)}
+        className="px-4 py-1.5 rounded-md text-sm font-medium bg-surface border border-muted/40 text-text-primary hover:border-accent/60 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+      >
+        {saving ? 'Saving…' : saved ? 'Saved ✓' : 'Save RPE'}
+      </button>
+    </Card>
   )
 }
 

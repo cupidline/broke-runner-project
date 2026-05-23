@@ -18,8 +18,32 @@ function efficiencyScore(decouplingPct?: number): number {
 }
 
 export function calcFitnessScore({ ctl, vo2max, decouplingPct }: FitnessInputs): number {
-  const ctlComponent = normalizeCtl(ctl) * 0.6
-  const vo2Component = normalizeVO2max(vo2max) * 0.2
+  const ctlComponent = normalizeCtl(ctl) * 0.5
+  const vo2Component = normalizeVO2max(vo2max) * 0.3
   const effComponent = efficiencyScore(decouplingPct) * 0.2
   return Math.round(Math.max(0, Math.min(100, ctlComponent + vo2Component + effComponent)))
+}
+
+export type FitnessBand = 'detrained' | 'building' | 'base' | 'trained' | 'peak'
+
+export interface FitnessBandConfig {
+  label: string
+  description: string
+  color: string
+}
+
+export const FITNESS_BAND_CONFIG: Record<FitnessBand, FitnessBandConfig> = {
+  detrained: { label: 'Detrained',  description: 'Fitness depleted — restart base training', color: '#71717A' },
+  building:  { label: 'Building',   description: 'Load accumulating, aerobic base forming',   color: '#7DD3FC' },
+  base:      { label: 'Base',       description: 'Solid foundation for regular running',       color: '#34D399' },
+  trained:   { label: 'Trained',    description: 'Strong base, ready for hard efforts',        color: '#F59E0B' },
+  peak:      { label: 'Peak',       description: 'Race-capable fitness, high load + efficiency', color: '#A78BFA' },
+}
+
+export function fitnessBand(score: number): FitnessBand {
+  if (score >= 80) return 'peak'
+  if (score >= 65) return 'trained'
+  if (score >= 50) return 'base'
+  if (score >= 30) return 'building'
+  return 'detrained'
 }

@@ -33,6 +33,7 @@ export interface DailyMetrics {
   strain: number
   readiness: number
   fitnessScore: number
+  enduranceCapacity?: number
 }
 
 export interface UserSettings {

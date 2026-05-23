@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { ArrowRight } from 'lucide-react'
-import { formatPace, formatDuration, formatRelativeDate, formatTRIMP } from '@/lib/utils/format'
+import { formatPace, formatDuration, formatRelativeDate } from '@/lib/utils/format'
+import { TRIMPBar } from '@/components/ui/TRIMPBar'
 import type { Activity } from '@/types'
 
 interface Props {
@@ -59,11 +60,13 @@ export default function LastRunCard({ activity }: Props) {
         </div>
 
         {activity.trimp !== undefined && (
-          <div className="mt-3 flex items-center gap-2">
-            <Badge label={`TRIMP ${formatTRIMP(activity.trimp)}`} color="muted" />
-            {activity.type !== 'Run' && (
-              <Badge label={activity.type} color="accent" />
-            )}
+          <div className="mt-3">
+            <TRIMPBar trimp={activity.trimp} />
+          </div>
+        )}
+        {activity.type !== 'Run' && (
+          <div className="mt-2">
+            <Badge label={activity.type} color="accent" />
           </div>
         )}
       </Card>

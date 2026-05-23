@@ -3,12 +3,13 @@ import { buildAuthUrl } from '@/lib/strava/auth'
 import { db } from '@/lib/db/schema'
 
 export function useStrava() {
+  // null = loaded but no token, undefined = still loading, string = has token
   const accessToken = useLiveQuery(
-    () => db.settings.get('stravaAccessToken').then(r => r?.value as string | undefined),
+    () => db.settings.get('stravaAccessToken').then(r => r?.value as string ?? null),
     [],
   )
 
-  const isAuthed = Boolean(accessToken)
+  const isAuthed = typeof accessToken === 'string'
 
   function login() {
     window.location.href = buildAuthUrl()

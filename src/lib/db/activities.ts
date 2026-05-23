@@ -17,6 +17,10 @@ export async function getLatestActivity(): Promise<Activity | undefined> {
   return db.activities.orderBy('startDate').last()
 }
 
+export async function updateActivity(activity: Activity): Promise<void> {
+  await db.activities.put(activity)
+}
+
 export async function clearActivities(): Promise<void> {
   await db.activities.clear()
 }

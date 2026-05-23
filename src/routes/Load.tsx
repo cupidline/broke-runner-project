@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useLatestMetrics } from '@/hooks/useMetrics'
 import { useActivities, useActivityCount } from '@/hooks/useActivities'
 import { acwrRisk } from '@/lib/metrics/acwr'
@@ -10,12 +10,13 @@ import type { Activity } from '@/types'
 
 // ── ACWR gauge ────────────────────────────────────────────────────────────────
 
+const SCALE_MAX = 2.0
 const ACWR_BANDS = [
-  { max: 0.5,  label: 'Undertrained', color: '#52525B',  width: '10%' },
-  { max: 0.8,  label: 'Building',     color: '#7DD3FC',  width: '15%' },
-  { max: 1.3,  label: 'Optimal',      color: '#34D399',  width: '25%' },
-  { max: 1.5,  label: 'Caution',      color: '#FBBF24',  width: '10%' },
-  { max: 2.0,  label: 'Danger',       color: '#F87171',  width: '40%' },
+  { from: 0.0, to: 0.5, label: 'Undertrained', desc: 'Way below baseline — detraining',         color: '#71717A' },
+  { from: 0.5, to: 0.8, label: 'Easy week',    desc: 'Recovery or taper territory',              color: '#7DD3FC' },
+  { from: 0.8, to: 1.3, label: 'Optimal',      desc: 'Training at your sweet spot',              color: '#34D399' },
+  { from: 1.3, to: 1.5, label: 'Caution',      desc: 'Pushing above baseline — monitor closely', color: '#F59E0B' },
+  { from: 1.5, to: 2.0, label: 'Danger',       desc: 'Load spike — injury risk elevated',        color: '#F87171' },
 ]
 
 const RISK_BADGE: Record<ReturnType<typeof acwrRisk>, { color: 'accent' | 'success' | 'warning' | 'danger' | 'muted'; label: string }> = {
@@ -28,8 +29,8 @@ const RISK_BADGE: Record<ReturnType<typeof acwrRisk>, { color: 'accent' | 'succe
 function ACWRGauge({ acwr }: { acwr: number }) {
   const risk = acwrRisk(acwr)
   const { color: badgeColor, label } = RISK_BADGE[risk]
-  // Clamp position 0–2 → 0–100%
-  const pct = Math.max(0, Math.min(100, (acwr / 2) * 100))
+  const active = ACWR_BANDS.find(b => acwr < b.to) ?? ACWR_BANDS[ACWR_BANDS.length - 1]
+  const markerPct = (Math.min(Math.max(acwr, 0), SCALE_MAX) / SCALE_MAX) * 100
 
   return (
     <div className="space-y-3">
@@ -39,24 +40,142 @@ function ACWRGauge({ acwr }: { acwr: number }) {
         </span>
         <Badge label={label} color={badgeColor} />
       </div>
-      {/* Track */}
+
+      {/* Proportional track */}
       <div className="relative h-3 rounded-full overflow-hidden flex">
         {ACWR_BANDS.map(b => (
-          <div key={b.label} style={{ width: b.width, background: b.color }} className="h-full opacity-60" />
+          <div
+            key={b.label}
+            style={{
+              width: `${((b.to - b.from) / SCALE_MAX) * 100}%`,
+              background: b.color,
+              opacity: b.label === active.label ? 0.6 : 0.2,
+            }}
+            className="h-full"
+          />
         ))}
-        {/* Needle */}
         <div
           className="absolute top-0 bottom-0 w-0.5 bg-white rounded-full shadow"
-          style={{ left: `${pct}%`, transform: 'translateX(-50%)' }}
+          style={{ left: `${markerPct}%`, transform: 'translateX(-50%)' }}
         />
       </div>
-      <div className="flex justify-between text-xs text-text-muted">
-        <span>0.5</span><span>0.8</span><span>1.3</span><span>1.5</span><span>2.0</span>
+
+      {/* Band name labels */}
+      <div className="flex mt-1">
+        {ACWR_BANDS.map(b => (
+          <div
+            key={b.label}
+            className="flex justify-center"
+            style={{ width: `${((b.to - b.from) / SCALE_MAX) * 100}%` }}
+          >
+            <span
+              className="text-[9px] font-semibold leading-none text-center"
+              style={{ color: b.color, opacity: b.label === active.label ? 1 : 0.4 }}
+            >
+              {b.label}
+            </span>
+          </div>
+        ))}
       </div>
-      <p className="text-xs text-text-secondary">
-        Safe zone: 0.8–1.3 · Acute (ATL) ÷ Chronic (CTL) workload ratio
+
+      {/* Active band description */}
+      <p className="text-xs text-center" style={{ color: active.color }}>
+        {active.desc}
       </p>
     </div>
+  )
+}
+
+// ── Run type distribution ─────────────────────────────────────────────────────
+
+const TRIMP_BANDS = [
+  { label: 'Minimal',   from: 0,   to: 30,       color: '#52525B' },
+  { label: 'Recovery',  from: 30,  to: 60,       color: '#34D399' },
+  { label: 'Easy',      from: 60,  to: 150,      color: '#7DD3FC' },
+  { label: 'Moderate',  from: 150, to: 260,      color: '#F59E0B' },
+  { label: 'Hard',      from: 260, to: 420,      color: '#F97316' },
+  { label: 'Very Hard', from: 420, to: 620,      color: '#EF4444' },
+  { label: 'Extreme',   from: 620, to: Infinity, color: '#7C3AED' },
+]
+
+function getTRIMPBand(trimp: number) {
+  return TRIMP_BANDS.find(b => trimp < b.to) ?? TRIMP_BANDS[TRIMP_BANDS.length - 1]
+}
+
+type RunTypePeriod = '7d' | '14d' | '1m' | '3m' | '6m'
+
+const PERIODS: { value: RunTypePeriod; label: string; days: number }[] = [
+  { value: '7d',  label: '7d',  days: 7   },
+  { value: '14d', label: '14d', days: 14  },
+  { value: '1m',  label: '1m',  days: 30  },
+  { value: '3m',  label: '3m',  days: 90  },
+  { value: '6m',  label: '6m',  days: 180 },
+]
+
+function RunTypeDistribution({ activities }: { activities: Activity[] }) {
+  const [period, setPeriod] = useState<RunTypePeriod>('7d')
+  const days = PERIODS.find(p => p.value === period)!.days
+
+  const counts = useMemo(() => {
+    const cutoff = new Date()
+    cutoff.setDate(cutoff.getDate() - days)
+    const recent = activities.filter(a => a.trimp != null && new Date(a.startDate) >= cutoff)
+    const map = new Map<string, number>()
+    for (const a of recent) {
+      const band = getTRIMPBand(a.trimp!)
+      map.set(band.label, (map.get(band.label) ?? 0) + 1)
+    }
+    return TRIMP_BANDS
+      .map(b => ({ ...b, count: map.get(b.label) ?? 0 }))
+      .filter(b => b.count > 0)
+  }, [activities, days])
+
+  const total = counts.reduce((s, b) => s + b.count, 0)
+
+  return (
+    <Card>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+          Run Types
+        </p>
+        <div className="flex rounded-md overflow-hidden border border-muted/30">
+          {PERIODS.map(p => (
+            <button
+              key={p.value}
+              onClick={() => setPeriod(p.value)}
+              className={`px-2 py-0.5 text-xs font-medium transition-colors ${
+                period === p.value ? 'bg-accent text-bg' : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {total === 0 ? (
+        <p className="text-xs text-text-muted text-center py-2">No runs in the last {days} days</p>
+      ) : (
+        <div className="space-y-2.5">
+          {counts.map(b => (
+            <div key={b.label} className="flex items-center gap-2">
+              <span className="text-xs font-medium w-16 shrink-0" style={{ color: b.color }}>
+                {b.label}
+              </span>
+              <div className="flex-1 h-2 bg-muted/10 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all"
+                  style={{ width: `${(b.count / total) * 100}%`, background: b.color, opacity: 0.7 }}
+                />
+              </div>
+              <span className="text-xs tabular-nums text-text-secondary w-12 text-right shrink-0">
+                {b.count} {b.count === 1 ? 'run' : 'runs'}
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
   )
 }
 
@@ -111,7 +230,7 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
                 </span>
               </th>
             ))}
-            <th className="pb-2 text-xs font-semibold text-text-secondary text-left">Activity</th>
+            <th className="pb-2 text-xs font-semibold text-text-secondary text-left">Type</th>
           </tr>
         </thead>
         <tbody>
@@ -126,8 +245,8 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
               <td className="py-2 pr-4 tabular-nums text-accent font-medium text-xs">
                 {formatTRIMP(a.trimp!)}
               </td>
-              <td className="py-2 text-text-secondary text-xs truncate max-w-[140px]">
-                {a.name}
+              <td className="py-2 text-xs font-medium" style={{ color: getTRIMPBand(a.trimp!).color }}>
+                {getTRIMPBand(a.trimp!).label}
               </td>
             </tr>
           ))}
@@ -172,28 +291,57 @@ export default function Load() {
       {/* Monotony + Strain */}
       {metrics && (
         <div className="grid grid-cols-2 gap-3">
-          <Card>
-            <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1">
+          <Card className="flex flex-col items-center text-center gap-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
               Monotony
             </p>
-            <p className={`text-3xl font-bold tabular-nums ${metrics.monotony > 2 ? 'text-danger' : metrics.monotony > 1.5 ? 'text-warning' : 'text-text-primary'}`}>
-              {metrics.monotony.toFixed(2)}
-            </p>
-            <p className="text-xs text-text-muted mt-1">
-              {metrics.monotony > 2 ? 'High — vary training' : metrics.monotony > 1.5 ? 'Moderate' : 'Good variety'}
-            </p>
+            {(() => {
+              const m = metrics.monotony
+              const cfg = m > 2
+                ? { color: '#F87171', label: 'Dangerous', desc: 'Same load every day — vary training' }
+                : m > 1.5
+                ? { color: '#F59E0B', label: 'Moderate',  desc: 'Some repetition — mix in easy days' }
+                : { color: '#34D399', label: 'Varied',    desc: 'Good training mix' }
+              return (
+                <>
+                  <p className="text-3xl font-bold tabular-nums leading-none" style={{ color: cfg.color }}>
+                    {m.toFixed(2)}
+                  </p>
+                  <p className="text-xs font-medium" style={{ color: cfg.color }}>{cfg.label}</p>
+                  <p className="text-[10px] text-text-muted leading-tight">{cfg.desc}</p>
+                </>
+              )
+            })()}
           </Card>
-          <Card>
-            <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-1">
+          <Card className="flex flex-col items-center text-center gap-1">
+            <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
               Strain
             </p>
-            <p className="text-3xl font-bold tabular-nums text-text-primary">
-              {Math.round(metrics.strain)}
-            </p>
-            <p className="text-xs text-text-muted mt-1">Weekly load × monotony</p>
+            {(() => {
+              const s = metrics.strain
+              const cfg = s > 1000
+                ? { color: '#F87171', label: 'Very High', desc: 'Heavy load with high repetition' }
+                : s > 500
+                ? { color: '#F59E0B', label: 'High',      desc: 'Significant accumulated stress' }
+                : s > 200
+                ? { color: '#7DD3FC', label: 'Moderate',  desc: 'Manageable weekly stress' }
+                : { color: '#34D399', label: 'Low',       desc: 'Light load or high variety' }
+              return (
+                <>
+                  <p className="text-3xl font-bold tabular-nums leading-none" style={{ color: cfg.color }}>
+                    {Math.round(s)}
+                  </p>
+                  <p className="text-xs font-medium" style={{ color: cfg.color }}>{cfg.label}</p>
+                  <p className="text-[10px] text-text-muted leading-tight">{cfg.desc}</p>
+                </>
+              )
+            })()}
           </Card>
         </div>
       )}
+
+      {/* Run type distribution */}
+      <RunTypeDistribution activities={activities} />
 
       {/* TRIMP table */}
       <Card>

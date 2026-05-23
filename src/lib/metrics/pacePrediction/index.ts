@@ -1,0 +1,6 @@
+export { predictPaceForWorkout } from './predict'
+export { estimateDistance, estimateDistanceSimple, estimateDistanceRange } from './distance'
+export { isPlausibleSample } from './plausibility'
+export { matchesProfile } from './matching'
+export { recencyWeight, daysAgo } from './recency'
+export type { WorkoutProfile } from './matching'
