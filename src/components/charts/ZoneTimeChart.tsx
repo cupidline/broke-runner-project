@@ -16,13 +16,6 @@ const ZONE_COLORS = {
   Z5: '#EF4444',
 }
 
-const ZONE_LABELS = {
-  Z1: 'Recovery',
-  Z2: 'Aerobic',
-  Z3: 'Tempo',
-  Z4: 'Threshold',
-  Z5: 'VO₂max',
-}
 
 function fmt(seconds: number): string {
   const h = Math.floor(seconds / 3600)
@@ -45,8 +38,8 @@ export default function ZoneTimeChart({ activities, fromDate, maxHR, restHR }: P
     totals[zone] += a.durationSeconds
   }
 
-  const maxSeconds = Math.max(...Object.values(totals), 1)
   const hasData = Object.values(totals).some(v => v > 0)
+  const totalBpmRange = maxHR - restHR
 
   if (!hasData) return (
     <p className="text-text-muted text-sm text-center py-4">
@@ -58,27 +51,28 @@ export default function ZoneTimeChart({ activities, fromDate, maxHR, restHR }: P
     <div className="space-y-2">
       {zones.map(z => {
         const secs = totals[z]
-        const pct = (secs / maxSeconds) * 100
         const [lo, hi] = bounds[z]
+        const bpmWidth = hi - lo
+        const barPct = (bpmWidth / totalBpmRange) * 100
         return (
           <div key={z} className="flex items-center gap-2">
             <span className="text-xs font-medium text-text-secondary w-6 shrink-0">{z}</span>
             <div className="flex-1 h-4 bg-muted/20 rounded-sm overflow-hidden">
               <div
-                className="h-full rounded-sm transition-all"
-                style={{ width: `${pct}%`, background: ZONE_COLORS[z] }}
+                className="h-full rounded-sm"
+                style={{ width: `${barPct}%`, background: ZONE_COLORS[z] }}
               />
             </div>
             <span className="text-xs tabular-nums text-text-muted w-14 text-right shrink-0">
               {secs > 0 ? fmt(secs) : '—'}
             </span>
-            <span className="text-xs tabular-nums text-text-muted w-24 shrink-0 text-right hidden sm:block">
+            <span className="text-xs tabular-nums text-text-muted w-24 shrink-0 text-right">
               {lo}–{hi} bpm
             </span>
           </div>
         )
       })}
-      <p className="text-[10px] text-text-muted pt-1">Based on avg HR per run · {ZONE_LABELS.Z1}–{ZONE_LABELS.Z5}</p>
+      <p className="text-[10px] text-text-muted pt-1">Bar = bpm range width · time = duration in zone</p>
     </div>
   )
 }
