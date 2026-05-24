@@ -6,7 +6,9 @@ import { formatDistance, formatDate, formatTRIMP } from '@/lib/utils/format'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { ChevronUp, ChevronDown } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
 import type { Activity } from '@/types'
+
 
 // ── ACWR gauge ────────────────────────────────────────────────────────────────
 
@@ -187,6 +189,7 @@ type SortDir = 'asc' | 'desc'
 function TRIMPTable({ activities }: { activities: Activity[] }) {
   const [sortKey, setSortKey] = useState<SortKey>('startDate')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+  const navigate = useNavigate()
 
   function toggleSort(key: SortKey) {
     if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc')
@@ -235,7 +238,7 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
         </thead>
         <tbody>
           {sorted.map(a => (
-            <tr key={a.id} className="border-b border-muted/10 hover:bg-surface/50 transition-colors">
+            <tr key={a.id} onClick={() => navigate(`/runs/${a.id}`)} className="border-b border-muted/10 hover:bg-surface/50 transition-colors cursor-pointer">
               <td className="py-2 pr-4 tabular-nums text-text-secondary text-xs whitespace-nowrap">
                 {formatDate(a.startDate)}
               </td>
