@@ -172,6 +172,13 @@ export default function RunDetail() {
           </p>
         </div>
 
+        {/* Route map */}
+        {streams.latlng && streams.latlng.length > 1 && (
+          <Card>
+            <RouteMap latlng={streams.latlng} />
+          </Card>
+        )}
+
         {/* Stats grid */}
         <Card className="grid grid-cols-3 gap-y-4 text-center">
           <Stat label="Distance" value={formatDistance(activity.distanceMeters)} icon={<TrendingUp size={14} />} />
@@ -239,16 +246,6 @@ export default function RunDetail() {
                   HR Zone Distribution
                 </p>
                 <ZoneBar dist={zoneDist} maxHR={maxHR} restHR={restHR} />
-              </Card>
-            )}
-
-            {/* Route map */}
-            {streams.latlng && streams.latlng.length > 1 && (
-              <Card>
-                <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
-                  Route
-                </p>
-                <RouteMap latlng={streams.latlng} />
               </Card>
             )}
 
