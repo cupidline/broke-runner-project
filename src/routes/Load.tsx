@@ -127,7 +127,8 @@ function RunTypeDistribution({ activities }: { activities: Activity[] }) {
       const band = getTRIMPBand(a.trimp!)
       map.set(band.label, (map.get(band.label) ?? 0) + 1)
     }
-    return TRIMP_BANDS
+    return [...TRIMP_BANDS]
+      .reverse()
       .map(b => ({ ...b, count: map.get(b.label) ?? 0 }))
       .filter(b => b.count > 0)
   }, [activities, days])
