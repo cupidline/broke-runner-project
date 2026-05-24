@@ -1,7 +1,7 @@
 export function formatPace(secPerKm: number): string {
   const min = Math.floor(secPerKm / 60)
   const sec = Math.round(secPerKm % 60)
-  return `${min}:${String(sec).padStart(2, '0')}/km`
+  return `${min}:${String(sec).padStart(2, '0')}`
 }
 
 export function formatDistance(meters: number): string {

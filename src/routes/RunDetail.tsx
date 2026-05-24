@@ -165,7 +165,7 @@ export default function RunDetail() {
           <Stat label="Distance" value={formatDistance(activity.distanceMeters)} icon={<TrendingUp size={14} />} />
           <Stat
             label="Pace"
-            value={activity.avgPaceSecPerKm ? formatPace(activity.avgPaceSecPerKm) : '—'}
+            value={activity.avgPaceSecPerKm ? `${formatPace(activity.avgPaceSecPerKm)} /km` : '—'}
             icon={<Timer size={14} />}
           />
           <Stat label="Duration" value={formatDuration(activity.durationSeconds)} icon={<Timer size={14} />} />

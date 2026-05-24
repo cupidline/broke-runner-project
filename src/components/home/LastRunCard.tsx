@@ -39,7 +39,7 @@ export default function LastRunCard({ activity }: Props) {
           {activity.avgPaceSecPerKm ? (
             <div>
               <p className="text-xl font-bold tabular-nums text-text-primary">
-                {formatPace(activity.avgPaceSecPerKm).replace('/km', '')}
+                {formatPace(activity.avgPaceSecPerKm)}
               </p>
               <p className="text-xs text-text-secondary">/km</p>
             </div>

@@ -51,7 +51,7 @@ function ActivityRow({ a }: { a: ReturnType<typeof useActivities>[number] }) {
             </p>
             {a.avgPaceSecPerKm ? (
               <p className="text-text-secondary text-xs tabular-nums">
-                {formatPace(a.avgPaceSecPerKm)}
+                {formatPace(a.avgPaceSecPerKm)} /km
               </p>
             ) : null}
           </div>
