@@ -58,16 +58,20 @@ export function TRIMPBar({ trimp }: { trimp: number }) {
         />
       </div>
 
-      {/* Tick labels */}
-      <div className="relative mt-1 h-3 text-[10px] text-text-muted">
-        {[0, 150, 420, 700].map(v => (
-          <span
-            key={v}
-            className="absolute"
-            style={{ left: `${(v / SCALE_MAX) * 100}%`, transform: v > 0 ? 'translateX(-50%)' : undefined }}
+      {/* Band labels */}
+      <div className="flex mt-1">
+        {SEGMENTS.map(s => (
+          <div
+            key={s.label}
+            style={{ width: `${s.pct}%` }}
+            className="text-center overflow-hidden"
           >
-            {v === 700 ? '700+' : v}
-          </span>
+            {s.pct >= 8 && (
+              <span className="text-[9px] text-text-muted leading-none truncate block">
+                {s.label}
+              </span>
+            )}
+          </div>
         ))}
       </div>
     </div>
