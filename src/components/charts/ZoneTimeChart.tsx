@@ -39,7 +39,7 @@ export default function ZoneTimeChart({ activities, fromDate, maxHR, restHR }: P
   }
 
   const hasData = Object.values(totals).some(v => v > 0)
-  const totalBpmRange = maxHR - restHR
+  const totalSeconds = Object.values(totals).reduce((s, v) => s + v, 0)
 
   if (!hasData) return (
     <p className="text-text-muted text-sm text-center py-4">
@@ -52,16 +52,17 @@ export default function ZoneTimeChart({ activities, fromDate, maxHR, restHR }: P
       {zones.map(z => {
         const secs = totals[z]
         const [lo, hi] = bounds[z]
-        const bpmWidth = hi - lo
-        const barPct = (bpmWidth / totalBpmRange) * 100
+        const barPct = (secs / totalSeconds) * 100
         return (
           <div key={z} className="flex items-center gap-2">
             <span className="text-xs font-medium text-text-secondary w-6 shrink-0">{z}</span>
             <div className="flex-1 h-4 bg-muted/20 rounded-sm overflow-hidden">
-              <div
-                className="h-full rounded-sm"
-                style={{ width: `${barPct}%`, background: ZONE_COLORS[z] }}
-              />
+              {secs > 0 && (
+                <div
+                  className="h-full rounded-sm"
+                  style={{ width: `${barPct}%`, background: ZONE_COLORS[z] }}
+                />
+              )}
             </div>
             <span className="text-xs tabular-nums text-text-muted w-14 text-right shrink-0">
               {secs > 0 ? fmt(secs) : '—'}
@@ -72,7 +73,7 @@ export default function ZoneTimeChart({ activities, fromDate, maxHR, restHR }: P
           </div>
         )
       })}
-      <p className="text-[10px] text-text-muted pt-1">Bar = bpm range width · time = duration in zone</p>
+      <p className="text-[10px] text-text-muted pt-1">Based on avg HR per run · proportional to total duration</p>
     </div>
   )
 }
