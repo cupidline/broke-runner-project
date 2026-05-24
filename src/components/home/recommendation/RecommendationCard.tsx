@@ -50,18 +50,32 @@ const MATCHED_CONGRATS: Partial<Record<Workout['type'], string>> = {
 
 type MatchResult =
   | { matched: true }
-  | { matched: false; reason: 'rest_day' | 'hr_over' | 'too_short' }
+  | { matched: false; reason: 'rest_day' | 'hr_over' | 'hr_under' | 'too_short' }
 
 function matchRun(workout: Workout, run: Activity): MatchResult {
   if (workout.type === 'rest') return { matched: false, reason: 'rest_day' }
+
+  const actualMin = run.durationSeconds / 60
+  const tooShort  = workout.totalDurationMin > 0 && actualMin < workout.totalDurationMin * 0.5
+
+  // Structured workouts (tempo / threshold / progression / strides)
+  if (workout.segments && workout.segments.length > 0) {
+    const qualitySeg = workout.segments.find(s => s.hrRange != null)
+    if (qualitySeg?.hrRange && run.avgHeartRate) {
+      const floor = qualitySeg.hrRange[0]
+      // Allow 5 bpm below floor: avg HR across whole run is naturally pulled down by wu/cd
+      if (run.avgHeartRate < floor - 5) {
+        return { matched: false, reason: 'hr_under' }
+      }
+    }
+    return tooShort ? { matched: false, reason: 'too_short' } : { matched: true }
+  }
+
+  // Simple workouts (easy / long / recovery)
   if (workout.hrCeiling && run.avgHeartRate && run.avgHeartRate > workout.hrCeiling + 5) {
     return { matched: false, reason: 'hr_over' }
   }
-  const actualMin = run.durationSeconds / 60
-  if (workout.totalDurationMin > 0 && actualMin < workout.totalDurationMin * 0.5) {
-    return { matched: false, reason: 'too_short' }
-  }
-  return { matched: true }
+  return tooShort ? { matched: false, reason: 'too_short' } : { matched: true }
 }
 
 function TodayRunStatus({ workout, run }: { workout: Workout; run: Activity }) {
@@ -81,6 +95,13 @@ function TodayRunStatus({ workout, run }: { workout: Workout; run: Activity }) {
     statusColor = 'text-warning'
   } else if (result.reason === 'hr_over') {
     message     = `You averaged ${Math.round(run.avgHeartRate!)} bpm — above the ${workout.hrCeiling} bpm ceiling. You worked harder than planned.`
+    statusColor = 'text-warning'
+  } else if (result.reason === 'hr_under') {
+    const qualitySeg = workout.segments?.find(s => s.hrRange != null)
+    const floor = qualitySeg?.hrRange?.[0]
+    message = floor && run.avgHeartRate
+      ? `You averaged ${Math.round(run.avgHeartRate)} bpm — didn't reach the ${floor} bpm quality zone. Counts as an easy aerobic run.`
+      : "You stayed aerobic — the quality portion wasn't reached. Counts as an easy run today."
     statusColor = 'text-warning'
   } else {
     const planned = workout.totalDurationMin

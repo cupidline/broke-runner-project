@@ -133,7 +133,7 @@ const RECIPES: Record<ReadinessBand, Record<RecommendationMode, RecipeBase>> = {
     progressive: {
       type: 'tempo',
       label: 'Tempo run',
-      totalDurationMin: 55,
+      totalDurationMin: 45,
       hrZoneKey: 'Z3',
       rationale: 'Fresh and ready. A tempo session will push your lactate threshold higher.',
       segmentSpecs: [
