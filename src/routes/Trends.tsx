@@ -97,6 +97,35 @@ export default function Trends() {
         )}
       </Card>
 
+      {/* Weekly Load (TRIMP) */}
+      <Card>
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+          Weekly Load (TRIMP)
+        </p>
+        {isLoading ? (
+          <Skeleton className="h-[160px]" />
+        ) : (
+          <WeeklyLoadChart activities={activities} fromDate={fromDate} />
+        )}
+      </Card>
+
+      {/* Zone time */}
+      <Card>
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+          Time in Zone
+        </p>
+        {isLoading || !settings ? (
+          <Skeleton className="h-[140px]" />
+        ) : (
+          <ZoneTimeChart
+            activities={activities}
+            fromDate={fromDate}
+            maxHR={settings.maxHR}
+            restHR={settings.restHR}
+          />
+        )}
+      </Card>
+
       {/* Weekly km */}
       <Card>
         <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
@@ -130,35 +159,6 @@ export default function Trends() {
           <Skeleton className="h-[160px]" />
         ) : (
           <WeeklyRunsChart activities={activities} fromDate={fromDate} />
-        )}
-      </Card>
-
-      {/* Zone time */}
-      <Card>
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
-          Time in Zone
-        </p>
-        {isLoading ? (
-          <Skeleton className="h-[140px]" />
-        ) : (
-          <ZoneTimeChart
-            activities={activities}
-            fromDate={fromDate}
-            maxHR={settings?.maxHR ?? 192}
-            restHR={settings?.restHR ?? 53}
-          />
-        )}
-      </Card>
-
-      {/* Weekly Load */}
-      <Card>
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
-          Weekly Load (TRIMP)
-        </p>
-        {isLoading ? (
-          <Skeleton className="h-[160px]" />
-        ) : (
-          <WeeklyLoadChart activities={activities} fromDate={fromDate} />
         )}
       </Card>
     </div>
