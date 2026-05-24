@@ -41,8 +41,11 @@ export async function syncActivities(
   onProgress?: (fetched: number) => void,
 ): Promise<SyncResult> {
   const lastSyncedAt = await getSetting('lastSyncedAt')
+  // Subtract 24 h so activities that started before the last sync but were
+  // uploaded to Strava afterward (e.g. watch sync delay) are not missed.
+  const LOOKBACK_MS = 24 * 60 * 60 * 1000
   const after = lastSyncedAt
-    ? Math.floor(new Date(lastSyncedAt).getTime() / 1000)
+    ? Math.floor((new Date(lastSyncedAt).getTime() - LOOKBACK_MS) / 1000)
     : 0
 
   let page = 1

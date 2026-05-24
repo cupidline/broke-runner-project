@@ -87,7 +87,7 @@ export function projectPeak(
       segments.push({ band: currentBand, hours: h - bandStart, openEnded: false })
       currentBand = band
       bandStart   = h
-      if (segments.length === 3) break  // 3 transitions is enough context
+      if (segments.length === 4) break  // 4 transitions covers cooked → peaked
     }
   }
 

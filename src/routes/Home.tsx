@@ -81,15 +81,37 @@ export default function Home() {
   const activityCount = useActivityCount()
   const settings = useSettings()
   const { sync, state: syncState, lastSyncedAt } = useSync()
+
+  const todayRun = (() => {
+    if (!latestActivity) return undefined
+    const d = new Date(latestActivity.startDate)
+    const now = new Date()
+    const isToday = d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    return isToday ? latestActivity : undefined
+  })()
   const autoSyncAttempted = useRef(false)
 
-  // Auto-sync on open if last sync was > 1 hour ago
+  // Auto-sync on open (and on tab re-focus) if last sync was > 1 hour ago
   useEffect(() => {
-    if (autoSyncAttempted.current) return
     if (lastSyncedAt === undefined) return
-    autoSyncAttempted.current = true
-    const lastSync = lastSyncedAt ? new Date(lastSyncedAt).getTime() : 0
-    if (Date.now() - lastSync > AUTO_SYNC_INTERVAL_MS) sync()
+
+    function maybSync() {
+      const lastSync = lastSyncedAt ? new Date(lastSyncedAt).getTime() : 0
+      if (Date.now() - lastSync > AUTO_SYNC_INTERVAL_MS) sync()
+    }
+
+    if (!autoSyncAttempted.current) {
+      autoSyncAttempted.current = true
+      maybSync()
+    }
+
+    function onVisible() {
+      if (document.visibilityState === 'visible') maybSync()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   }, [lastSyncedAt])
 
   if (activityCount === 0) return <NoDataState />
@@ -146,7 +168,7 @@ export default function Home() {
       <ReadinessCard readiness={metrics.readiness} tsb={metrics.tsb} peak={peak} asOf={metrics.asOf} />
       <FitnessFormCards current={metrics} history={history} activities={activities} />
       <ModeToggle mode={settings.recommendationMode} />
-      <RecommendationCard workout={today} when="Today" />
+      <RecommendationCard workout={today} when="Today" todayActivity={todayRun} />
       <RecommendationCard workout={tomorrow} when="Tomorrow" />
       {latestActivity && <LastRunCard activity={latestActivity} />}
     </div>

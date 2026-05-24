@@ -14,9 +14,9 @@ export default function AuthCallback() {
     if (didRun.current) return
     didRun.current = true
 
-    // main.tsx forwards Strava's ?code= to /#/auth/callback?code=
-    // so by the time we're here, the code is in location.search
-    const params = new URLSearchParams(window.location.search)
+    // URL is /#/auth/callback?code=… — query string is inside the hash, not location.search
+    const hashQuery = window.location.hash.split('?')[1] ?? ''
+    const params = new URLSearchParams(hashQuery)
     const code = params.get('code')
     const err = params.get('error')
 

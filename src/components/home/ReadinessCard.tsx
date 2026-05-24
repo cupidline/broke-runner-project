@@ -25,36 +25,42 @@ const BAND_CONFIG: Record<ReadinessBand, {
   cooked:    { color: '#F87171', badgeColor: 'danger',   label: 'Cooked'    },
 }
 
-// Shows only the peaked window: when it starts and how long it lasts.
-// Returns null if no peaked band is projected in the 14-day window.
-function PeakWindow({ segments }: { segments: PeakProjection['segments'] }) {
-  let hoursUntil = 0
-  const peakedSeg = segments.find((seg, i) => {
-    if (seg.band === 'peaked') return true
-    if (i < segments.length - 1) hoursUntil += seg.hours
-    return false
-  })
+const BAND_ORDER: ReadinessBand[] = ['cooked', 'fatigued', 'trainable', 'fresh', 'peaked']
 
-  if (!peakedSeg) return null
+// Shows upcoming band milestones above the current band (e.g. if fatigued: trainable → fresh → peaked).
+function BandMilestones({ segments, currentBand }: {
+  segments: PeakProjection['segments']
+  currentBand: ReadinessBand
+}) {
+  const targets = BAND_ORDER.slice(BAND_ORDER.indexOf(currentBand) + 1)
+  if (targets.length === 0) return null
 
-  const { color } = BAND_CONFIG['peaked']
-  const dur = peakedSeg.openEnded ? '14d+' : formatHoursDuration(peakedSeg.hours)
-
-  if (hoursUntil === 0) {
-    // Currently peaked
-    return (
-      <p className="text-xs text-text-muted">
-        <span style={{ color }} className="font-medium">Peaked</span>
-        {' '}for {dur}
-      </p>
-    )
+  const milestones: { band: ReadinessBand; hoursUntil: number; hours: number; openEnded: boolean }[] = []
+  let cumHours = 0
+  for (const seg of segments) {
+    if ((targets as string[]).includes(seg.band)) {
+      milestones.push({ band: seg.band as ReadinessBand, hoursUntil: cumHours, hours: seg.hours, openEnded: seg.openEnded })
+    }
+    cumHours += seg.hours
   }
 
+  if (milestones.length === 0) return null
+
   return (
-    <p className="text-xs text-text-muted">
-      <span style={{ color }} className="font-medium">Peaks</span>
-      {' '}in {formatHoursDuration(hoursUntil)} · lasts {dur}
-    </p>
+    <div className="flex flex-col items-center gap-1">
+      {milestones.map(({ band, hoursUntil, hours, openEnded }) => {
+        const { color, label } = BAND_CONFIG[band]
+        const dur = openEnded ? '14d+' : formatHoursDuration(hours)
+        return (
+          <p key={band} className="text-xs text-text-muted">
+            {hoursUntil === 0
+              ? <><span style={{ color }} className="font-medium">{label}</span>{' '}for {dur}</>
+              : <><span style={{ color }} className="font-medium">{label}</span>{' '}in {formatHoursDuration(hoursUntil)} · lasts {dur}</>
+            }
+          </p>
+        )
+      })}
+    </div>
   )
 }
 
@@ -85,7 +91,7 @@ export default function ReadinessCard({ readiness, tsb, peak, asOf }: Props) {
         <TSBBar tsb={tsb} />
       </div>
 
-      {peak && <PeakWindow segments={peak.segments} />}
+      {peak && <BandMilestones segments={peak.segments} currentBand={band} />}
 
       {updatedAt && (
         <p className="text-[10px] text-text-muted">updated {updatedAt}</p>
