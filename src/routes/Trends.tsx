@@ -5,6 +5,8 @@ import Card from '@/components/ui/Card'
 import PMCChart from '@/components/charts/PMCChart'
 import WeeklyLoadChart from '@/components/charts/WeeklyLoadChart'
 import WeeklyKmChart from '@/components/charts/WeeklyKmChart'
+import LongRunChart from '@/components/charts/LongRunChart'
+import WeeklyRunsChart from '@/components/charts/WeeklyRunsChart'
 
 const RANGES = [
   { label: '4W',  days: 28 },
@@ -101,6 +103,30 @@ export default function Trends() {
           <Skeleton className="h-[160px]" />
         ) : (
           <WeeklyKmChart activities={activities} fromDate={fromDate} />
+        )}
+      </Card>
+
+      {/* Long run progression */}
+      <Card>
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+          Long Run Progression (km)
+        </p>
+        {isLoading ? (
+          <Skeleton className="h-[160px]" />
+        ) : (
+          <LongRunChart activities={activities} fromDate={fromDate} />
+        )}
+      </Card>
+
+      {/* Weekly runs count */}
+      <Card>
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+          Runs per Week
+        </p>
+        {isLoading ? (
+          <Skeleton className="h-[160px]" />
+        ) : (
+          <WeeklyRunsChart activities={activities} fromDate={fromDate} />
         )}
       </Card>
 
