@@ -1,11 +1,6 @@
-// Strava redirects to the bare origin with ?code= — forward to the hash route before React mounts
-if (window.location.search.includes('code=') && !window.location.hash.includes('auth/callback')) {
-  window.location.replace(`${window.location.origin}/#/auth/callback${window.location.search}`)
-}
-
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import '@/styles/globals.css'
 
 import { SettingsProvider } from '@/context/SettingsContext'
@@ -20,7 +15,7 @@ import AuthCallback from '@/routes/AuthCallback'
 
 createRoot(document.getElementById('app')!).render(
   <StrictMode>
-    <HashRouter>
+    <BrowserRouter>
       <SettingsProvider>
         <Routes>
           <Route element={<AppShell />}>
@@ -34,6 +29,6 @@ createRoot(document.getElementById('app')!).render(
           <Route path="auth/callback" element={<AuthCallback />} />
         </Routes>
       </SettingsProvider>
-    </HashRouter>
+    </BrowserRouter>
   </StrictMode>,
 )
