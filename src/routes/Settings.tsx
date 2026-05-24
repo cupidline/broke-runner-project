@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { ChevronDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { useStrava } from '@/hooks/useStrava'
 import { useSync } from '@/hooks/useSync'
@@ -88,6 +89,101 @@ function Toggle({
         }`}
       />
     </button>
+  )
+}
+
+// ── How it works ──────────────────────────────────────────────────────────────
+
+const METRICS = [
+  {
+    title: 'TRIMP',
+    subtitle: 'Training Impulse — load score per run',
+    body: 'Measures how hard each session stressed your body. With HR data it uses the Banister formula — duration × heart rate reserve × an exponential intensity factor. Without HR it falls back to RPE or duration alone.',
+    formula: 'TRIMP = duration × HRR × 0.64 × e^(1.92 × HRR)',
+  },
+  {
+    title: 'CTL — Fitness',
+    subtitle: 'Chronic Training Load (42-day average)',
+    body: 'The long-term EWMA of your daily TRIMP over 42 days. Think of it as your aerobic fitness base — it rises slowly with consistent training and falls slowly with rest.',
+    formula: 'CTL = CTL_prev × (41/42) + TRIMP_today × (1/42)',
+  },
+  {
+    title: 'ATL — Fatigue',
+    subtitle: 'Acute Training Load (7-day average)',
+    body: 'The short-term EWMA of your daily TRIMP over 7 days. Rises quickly after hard training, falls quickly with rest. High ATL means you are currently fatigued.',
+    formula: 'ATL = ATL_prev × (6/7) + TRIMP_today × (1/7)',
+  },
+  {
+    title: 'TSB — Form',
+    subtitle: 'Training Stress Balance',
+    body: 'The difference between fitness and fatigue. Positive TSB means you are fresh and well-recovered. Negative means you are carrying fatigue. Optimal race form is usually TSB +5 to +15.',
+    formula: 'TSB = CTL − ATL',
+  },
+  {
+    title: 'ACWR — Workload',
+    subtitle: 'Acute:Chronic Workload Ratio',
+    body: 'Compares recent load to your baseline. The sweet spot is 0.8–1.3 — enough stimulus to improve without spiking injury risk. Below 0.8 is undertraining; above 1.5 is a danger zone.',
+    formula: 'ACWR = ATL / CTL',
+  },
+  {
+    title: 'Monotony',
+    subtitle: 'Training variety score',
+    body: 'Measures how uniform your daily load is. High monotony (>2) means you are doing similar workloads every day, which raises injury and overtraining risk. Vary hard and easy days to keep it low.',
+    formula: 'Monotony = avg(daily TRIMP) / std_dev(daily TRIMP)',
+  },
+  {
+    title: 'Training Readiness',
+    subtitle: 'Composite daily readiness score (0–100)',
+    body: 'Combines TSB, ACWR, and monotony into a single score. TSB contributes the most (50%) because form drives day-to-day readiness. ACWR (30%) flags overreaching. Monotony (20%) catches staleness.',
+    formula: 'Readiness = 0.5×TSB_score + 0.3×ACWR_score + 0.2×Monotony_score',
+  },
+  {
+    title: 'VO2max estimate',
+    subtitle: 'Aerobic capacity from HR range',
+    body: 'Estimated using the Uth-Sørensen formula — no lab test needed. The 15.3 constant is an empirical coefficient fitted from research data. Update your MaxHR and RestHR in Profile to improve accuracy.',
+    formula: 'VO2max = 15.3 × (MaxHR / RestHR)',
+  },
+  {
+    title: 'Fitness Score',
+    subtitle: 'Normalized 0–100 fitness index',
+    body: 'Blends your current CTL with your estimated VO2max, both normalized to 0–100. Reflects both your recent training volume and your aerobic ceiling.',
+    formula: 'FitnessScore = weighted blend of CTL_norm and VO2max_norm',
+  },
+  {
+    title: 'Endurance Capacity',
+    subtitle: 'Long-run capability score',
+    body: 'Derived from your longest recent runs, weighted by recency. Captures your ability to sustain effort over time — essential for marathon and ultra preparation.',
+    formula: 'Based on recency-weighted long run distance',
+  },
+]
+
+function AccordionItem({ title, subtitle, body, formula }: typeof METRICS[0]) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-b border-muted/20 last:border-0">
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full p-4 flex items-center justify-between gap-3 text-left"
+        aria-expanded={open}
+      >
+        <div>
+          <p className="text-text-primary font-medium text-sm">{title}</p>
+          <p className="text-text-muted text-xs mt-0.5">{subtitle}</p>
+        </div>
+        <ChevronDown
+          size={16}
+          className={`text-text-muted shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+        />
+      </button>
+      {open && (
+        <div className="px-4 pb-4 space-y-2">
+          <p className="text-text-secondary text-sm leading-relaxed">{body}</p>
+          <p className="text-text-muted text-xs font-mono bg-bg rounded px-2 py-1.5 leading-relaxed">
+            {formula}
+          </p>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -675,6 +771,14 @@ export default function Settings() {
           </SectionCard>
         </section>
       )}
+
+      {/* ── How it works ── */}
+      <section aria-labelledby="how-heading" className="mb-6">
+        <SectionHeading id="how-heading">How it works</SectionHeading>
+        <div className="bg-surface rounded-lg divide-y divide-muted/20">
+          {METRICS.map(m => <AccordionItem key={m.title} {...m} />)}
+        </div>
+      </section>
 
       {/* ── Data ── */}
       <section aria-labelledby="data-heading" className="mb-6">
