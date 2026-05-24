@@ -12,7 +12,6 @@ import { backfillMetrics } from '@/lib/metrics/backfill'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { TRIMPBar } from '@/components/ui/TRIMPBar'
-import RouteMap from '@/components/charts/RouteMap'
 import { ArrowLeft, Heart, Timer, TrendingUp, Mountain } from 'lucide-react'
 
 // ── Zone bar ──────────────────────────────────────────────────────────────────
@@ -171,13 +170,6 @@ export default function RunDetail() {
             {new Date(activity.startDate).toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
           </p>
         </div>
-
-        {/* Route map */}
-        {streams.latlng && streams.latlng.length > 1 && (
-          <Card>
-            <RouteMap latlng={streams.latlng} />
-          </Card>
-        )}
 
         {/* Stats grid */}
         <Card className="grid grid-cols-3 gap-y-4 text-center">
