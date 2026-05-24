@@ -3,7 +3,7 @@ import { saveStreams } from '@/lib/db/streams'
 import type { StravaStream } from './types'
 import type { ActivityStreams } from '@/lib/db/streams'
 
-const STREAM_KEYS = 'heartrate,time,velocity_smooth,altitude'
+const STREAM_KEYS = 'heartrate,time,velocity_smooth,altitude,latlng'
 
 export async function fetchAndSaveStreams(
   stravaId: number,
@@ -18,6 +18,7 @@ export async function fetchAndSaveStreams(
   if (raw.time?.data)            streams.time            = raw.time.data
   if (raw.velocity_smooth?.data) streams.velocity_smooth = raw.velocity_smooth.data
   if (raw.altitude?.data)        streams.altitude        = raw.altitude.data
+  if (raw.latlng?.data)          streams.latlng          = raw.latlng.data as unknown as [number, number][]
 
   await saveStreams(activityId, streams)
 }

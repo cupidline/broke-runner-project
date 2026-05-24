@@ -12,6 +12,7 @@ import { backfillMetrics } from '@/lib/metrics/backfill'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { TRIMPBar } from '@/components/ui/TRIMPBar'
+import RouteMap from '@/components/charts/RouteMap'
 import { ArrowLeft, Heart, Timer, TrendingUp, Mountain } from 'lucide-react'
 
 // ── Zone bar ──────────────────────────────────────────────────────────────────
@@ -238,6 +239,16 @@ export default function RunDetail() {
                   HR Zone Distribution
                 </p>
                 <ZoneBar dist={zoneDist} maxHR={maxHR} restHR={restHR} />
+              </Card>
+            )}
+
+            {/* Route map */}
+            {streams.latlng && streams.latlng.length > 1 && (
+              <Card>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+                  Route
+                </p>
+                <RouteMap latlng={streams.latlng} />
               </Card>
             )}
 
