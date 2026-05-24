@@ -56,17 +56,24 @@ export default function ZoneTimeChart({ activities, fromDate, maxHR, restHR }: P
         return (
           <div key={z} className="flex items-center gap-2">
             <span className="text-xs font-medium text-text-secondary w-6 shrink-0">{z}</span>
-            <div className="flex-1 h-4 bg-muted/20 rounded-sm overflow-hidden">
+            <div className="flex-1 relative h-4">
+              {/* Track */}
+              <div className="absolute inset-0 bg-muted/20 rounded-sm" />
+              {/* Fill */}
               {secs > 0 && (
                 <div
-                  className="h-full rounded-sm"
+                  className="absolute inset-y-0 left-0 rounded-sm"
                   style={{ width: `${barPct}%`, background: ZONE_COLORS[z] }}
                 />
               )}
+              {/* Inline duration */}
+              <span
+                className="absolute inset-y-0 flex items-center text-[10px] tabular-nums font-medium pl-1 whitespace-nowrap"
+                style={{ left: `${barPct}%`, color: secs > 0 ? ZONE_COLORS[z] : '#71717A' }}
+              >
+                {fmt(secs)}
+              </span>
             </div>
-            <span className="text-xs tabular-nums text-text-muted w-14 text-right shrink-0">
-              {secs > 0 ? fmt(secs) : '—'}
-            </span>
             <span className="text-xs tabular-nums text-text-muted w-24 shrink-0 text-right">
               {lo}–{hi} bpm
             </span>
