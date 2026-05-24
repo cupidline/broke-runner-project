@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useMetricsHistory } from '@/hooks/useMetrics'
 import { useActivities, useActivityCount } from '@/hooks/useActivities'
+import { useSettings } from '@/hooks/useSettings'
 import Card from '@/components/ui/Card'
 import PMCChart from '@/components/charts/PMCChart'
 import WeeklyLoadChart from '@/components/charts/WeeklyLoadChart'
 import WeeklyKmChart from '@/components/charts/WeeklyKmChart'
 import LongRunChart from '@/components/charts/LongRunChart'
 import WeeklyRunsChart from '@/components/charts/WeeklyRunsChart'
+import ZoneTimeChart from '@/components/charts/ZoneTimeChart'
 
 const RANGES = [
   { label: '4W',  days: 28 },
@@ -28,6 +30,7 @@ export default function Trends() {
   const history = useMetricsHistory(selectedDays)
   const activities = useActivities()
   const activityCount = useActivityCount()
+  const settings = useSettings()
 
   const fromDate = new Date()
   fromDate.setUTCDate(fromDate.getUTCDate() - selectedDays)
@@ -127,6 +130,23 @@ export default function Trends() {
           <Skeleton className="h-[160px]" />
         ) : (
           <WeeklyRunsChart activities={activities} fromDate={fromDate} />
+        )}
+      </Card>
+
+      {/* Zone time */}
+      <Card>
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+          Time in Zone
+        </p>
+        {isLoading ? (
+          <Skeleton className="h-[140px]" />
+        ) : (
+          <ZoneTimeChart
+            activities={activities}
+            fromDate={fromDate}
+            maxHR={settings?.maxHR ?? 192}
+            restHR={settings?.restHR ?? 53}
+          />
         )}
       </Card>
 
