@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useLatestMetrics } from '@/hooks/useMetrics'
 import { useActivities, useActivityCount } from '@/hooks/useActivities'
 import { acwrRisk } from '@/lib/metrics/acwr'
-import { formatDistance, formatRelativeDate, formatTRIMP } from '@/lib/utils/format'
+import { formatDistance, formatDate, formatTRIMP } from '@/lib/utils/format'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { ChevronUp, ChevronDown } from 'lucide-react'
@@ -237,7 +237,7 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
           {sorted.map(a => (
             <tr key={a.id} className="border-b border-muted/10 hover:bg-surface/50 transition-colors">
               <td className="py-2 pr-4 tabular-nums text-text-secondary text-xs whitespace-nowrap">
-                {formatRelativeDate(a.startDate)}
+                {formatDate(a.startDate)}
               </td>
               <td className="py-2 pr-4 tabular-nums text-text-primary text-xs whitespace-nowrap">
                 {formatDistance(a.distanceMeters)}

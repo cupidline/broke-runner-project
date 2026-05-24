@@ -19,6 +19,14 @@ export function formatTRIMP(trimp: number): string {
   return Math.round(trimp).toString()
 }
 
+export function formatDate(isoDate: string): string {
+  const d = new Date(isoDate)
+  const dd = String(d.getDate()).padStart(2, '0')
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const yyyy = d.getFullYear()
+  return `${dd}-${mm}-${yyyy}`
+}
+
 export function formatRelativeDate(isoDate: string): string {
   const diff = Date.now() - new Date(isoDate).getTime()
   const days = Math.floor(diff / 86_400_000)

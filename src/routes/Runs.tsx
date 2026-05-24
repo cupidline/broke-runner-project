@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useActivities } from '@/hooks/useActivities'
-import { formatPace, formatRelativeDate } from '@/lib/utils/format'
+import { formatPace, formatDate } from '@/lib/utils/format'
 import { TRIMPBarCompact } from '@/components/ui/TRIMPBar'
 import type { ActivityType } from '@/types'
 
@@ -37,7 +37,7 @@ function ActivityRow({ a }: { a: ReturnType<typeof useActivities>[number] }) {
         <div className="min-w-0 flex-1">
           <p className="text-text-primary font-medium text-sm truncate">{a.name}</p>
           <p className="text-text-secondary text-xs mt-0.5">
-            {formatRelativeDate(a.startDate)}
+            {formatDate(a.startDate)}
             {a.type !== 'Run' && (
               <span className="ml-2 text-accent">{a.type}</span>
             )}
