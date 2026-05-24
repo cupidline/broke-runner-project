@@ -5,7 +5,7 @@ import { useActivity } from '@/hooks/useActivities'
 import { useActivityStreams } from '@/hooks/useActivityStreams'
 import { useSettings } from '@/hooks/useSettings'
 import { calcDecoupling } from '@/lib/metrics/decoupling'
-import { calcZoneDistribution } from '@/lib/metrics/zones'
+import { calcZoneDistribution, calcZoneBounds } from '@/lib/metrics/zones'
 import { formatPace, formatDistance, formatDuration, formatRelativeDate } from '@/lib/utils/format'
 import { updateActivity } from '@/lib/db/activities'
 import { backfillMetrics } from '@/lib/metrics/backfill'
@@ -24,14 +24,15 @@ const ZONE_COLORS = {
   Z5: '#EF4444',
 }
 
-const ZONE_LABELS = { Z1: 'Recovery', Z2: 'Aerobic', Z3: 'Tempo', Z4: 'Threshold', Z5: 'VO₂max' }
 
-function ZoneBar({ dist }: { dist: Record<string, number> }) {
-  const zones = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const
+function ZoneBar({ dist, maxHR, restHR }: { dist: Record<string, number>; maxHR: number; restHR: number }) {
+  const zones = ['Z5', 'Z4', 'Z3', 'Z2', 'Z1'] as const
+  const bounds = calcZoneBounds(maxHR, restHR)
   return (
     <div className="space-y-2">
       {zones.map(z => {
         const pct = Math.round((dist[z] ?? 0) * 100)
+        const [lo, hi] = bounds[z]
         return (
           <div key={z} className="flex items-center gap-2">
             <span className="text-xs font-medium text-text-secondary w-6 shrink-0">{z}</span>
@@ -42,7 +43,9 @@ function ZoneBar({ dist }: { dist: Record<string, number> }) {
               />
             </div>
             <span className="text-xs tabular-nums text-text-muted w-8 text-right shrink-0">{pct}%</span>
-            <span className="text-xs text-text-muted w-20 shrink-0 hidden sm:block">{ZONE_LABELS[z]}</span>
+            <span className="text-xs tabular-nums text-text-muted w-24 shrink-0 text-right">
+              {lo}–{hi} bpm
+            </span>
           </div>
         )
       })}
@@ -226,7 +229,7 @@ export default function RunDetail() {
                 <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
                   HR Zone Distribution
                 </p>
-                <ZoneBar dist={zoneDist} />
+                <ZoneBar dist={zoneDist} maxHR={maxHR} restHR={restHR} />
               </Card>
             )}
 
