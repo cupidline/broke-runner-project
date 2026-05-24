@@ -24,28 +24,28 @@ const ZONE_COLORS = {
   Z5: '#EF4444',
 }
 
+const ZONE_LABELS = { Z1: 'Recovery', Z2: 'Aerobic', Z3: 'Tempo', Z4: 'Threshold', Z5: 'VO₂max' }
+
 function ZoneBar({ dist }: { dist: Record<string, number> }) {
   const zones = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'] as const
   return (
-    <div className="space-y-1.5">
-      {/* Stacked bar */}
-      <div className="flex h-3 rounded-full overflow-hidden">
-        {zones.map(z => (
-          <div
-            key={z}
-            style={{ width: `${(dist[z] ?? 0) * 100}%`, background: ZONE_COLORS[z] }}
-          />
-        ))}
-      </div>
-      {/* Legend */}
-      <div className="flex gap-3 flex-wrap">
-        {zones.map(z => (
-          <span key={z} className="flex items-center gap-1 text-xs text-text-secondary">
-            <span className="w-2 h-2 rounded-full inline-block" style={{ background: ZONE_COLORS[z] }} />
-            {z} {Math.round((dist[z] ?? 0) * 100)}%
-          </span>
-        ))}
-      </div>
+    <div className="space-y-2">
+      {zones.map(z => {
+        const pct = Math.round((dist[z] ?? 0) * 100)
+        return (
+          <div key={z} className="flex items-center gap-2">
+            <span className="text-xs font-medium text-text-secondary w-6 shrink-0">{z}</span>
+            <div className="flex-1 h-4 bg-muted/20 rounded-sm overflow-hidden">
+              <div
+                className="h-full rounded-sm transition-all"
+                style={{ width: `${pct}%`, background: ZONE_COLORS[z] }}
+              />
+            </div>
+            <span className="text-xs tabular-nums text-text-muted w-8 text-right shrink-0">{pct}%</span>
+            <span className="text-xs text-text-muted w-20 shrink-0 hidden sm:block">{ZONE_LABELS[z]}</span>
+          </div>
+        )
+      })}
     </div>
   )
 }
