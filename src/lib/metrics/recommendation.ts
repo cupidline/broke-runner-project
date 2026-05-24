@@ -1,25 +1,44 @@
 import type { Activity, ReadinessBand, RecommendationMode } from '@/types'
-import type { Workout, WorkoutType } from '@/types/workout'
+import type { Workout, WorkoutType, WorkoutSegment } from '@/types/workout'
 
 export type { Workout as Recommendation }
 import { calcZoneBounds } from './zones'
+import type { ZoneBounds } from './zones'
 import { calcReadiness, readinessBand } from './readiness'
 import { predictPaceForWorkout } from './pacePrediction'
 import { estimateDistance } from './pacePrediction/distance'
+import type { WorkoutProfile } from './pacePrediction/matching'
+
+// ── Segment spec ─────────────────────────────────────────────────────────────
+
+interface SegmentSpec {
+  label: string
+  durationMin: number
+  hrZoneKey: keyof ZoneBounds | null
+  workoutType?: WorkoutType   // if set, pace prediction is attempted
+  effort?: number
+  feelDescription?: string
+  notes?: string
+}
+
+// ── Recipe ────────────────────────────────────────────────────────────────────
 
 interface RecipeBase {
   type: WorkoutType
   label: string
   totalDurationMin: number
   rationale: string
-  hrZoneKey: 'Z1' | 'Z2' | 'Z3' | null
+  hrZoneKey: keyof ZoneBounds | null
   feelDescription?: string
   pacingTip?: string
   fuelingReminder?: boolean
   decouplingTarget?: number
   activeRecoveryOptions?: string[]
   avoid?: string[]
+  segmentSpecs?: SegmentSpec[]
 }
+
+// ── Recipes ───────────────────────────────────────────────────────────────────
 
 const RECIPES: Record<ReadinessBand, Record<RecommendationMode, RecipeBase>> = {
   cooked: {
@@ -36,7 +55,7 @@ const RECIPES: Record<ReadinessBand, Record<RecommendationMode, RecipeBase>> = {
       avoid: ['Running', 'Hard cardio'],
     },
     progressive: {
-      type: 'recovery', label: 'Z1 recovery walk/jog', totalDurationMin: 30, hrZoneKey: 'Z1',
+      type: 'recovery', label: 'Z1 recovery walk/jog', totalDurationMin: 20, hrZoneKey: 'Z1',
       rationale: 'Very light movement only — do not accumulate more stress.',
       feelDescription: 'You should be able to carry a full conversation.',
     },
@@ -50,7 +69,7 @@ const RECIPES: Record<ReadinessBand, Record<RecommendationMode, RecipeBase>> = {
     balanced: {
       type: 'easy', label: 'Z1–Z2 easy run', totalDurationMin: 45, hrZoneKey: 'Z2',
       rationale: 'Moderate fatigue. Stay aerobic and keep it short.',
-      feelDescription: 'Conversational. Slow down if you can\'t chat.',
+      feelDescription: "Conversational. Slow down if you can't chat.",
     },
     progressive: {
       type: 'easy', label: 'Z2 aerobic run', totalDurationMin: 60, hrZoneKey: 'Z2',
@@ -60,7 +79,7 @@ const RECIPES: Record<ReadinessBand, Record<RecommendationMode, RecipeBase>> = {
   },
   trainable: {
     conservative: {
-      type: 'easy', label: 'Z2 aerobic run', totalDurationMin: 60, hrZoneKey: 'Z2',
+      type: 'easy', label: 'Z2 aerobic run', totalDurationMin: 45, hrZoneKey: 'Z2',
       rationale: 'Good shape for base building. Keep HR in Z2.',
       feelDescription: 'Comfortable effort. Focus on duration, not pace.',
     },
@@ -70,9 +89,23 @@ const RECIPES: Record<ReadinessBand, Record<RecommendationMode, RecipeBase>> = {
       feelDescription: 'Comfortable effort.',
     },
     progressive: {
-      type: 'long', label: 'Z2 aerobic run', totalDurationMin: 75, hrZoneKey: 'Z2',
-      rationale: 'Ready for a longer aerobic effort. Extend the session.',
-      pacingTip: 'Start at the slow end. HR drift should stay flat.',
+      type: 'progression',
+      label: 'Progression run',
+      totalDurationMin: 55,
+      hrZoneKey: 'Z3',
+      rationale: 'Solid base. Add a gentle build to start stimulating faster running.',
+      segmentSpecs: [
+        {
+          label: 'Easy', durationMin: 25, hrZoneKey: 'Z2', workoutType: 'easy',
+        },
+        {
+          label: 'Build', durationMin: 20, hrZoneKey: 'Z3', workoutType: 'tempo',
+          feelDescription: 'Comfortably hard — not race pace.',
+        },
+        {
+          label: 'Cool-down', durationMin: 10, hrZoneKey: 'Z2', workoutType: 'easy',
+        },
+      ],
     },
   },
   fresh: {
@@ -82,42 +115,92 @@ const RECIPES: Record<ReadinessBand, Record<RecommendationMode, RecipeBase>> = {
       feelDescription: 'Easy and controlled.',
     },
     balanced: {
-      type: 'long', label: 'Z2 long run', totalDurationMin: 75, hrZoneKey: 'Z2',
-      rationale: 'Fresh legs — capitalize with a longer aerobic effort.',
-      fuelingReminder: true,
-      decouplingTarget: 5,
-      pacingTip: 'Start at the slow end. HR drift should stay flat. Fuel from min 60.',
+      type: 'strides',
+      label: 'Easy + Strides',
+      totalDurationMin: 50,
+      hrZoneKey: 'Z2',
+      rationale: 'Fresh legs — easy aerobic base with strides to sharpen the neuromuscular system.',
+      segmentSpecs: [
+        {
+          label: 'Easy run', durationMin: 40, hrZoneKey: 'Z2', workoutType: 'easy',
+        },
+        {
+          label: 'Strides', durationMin: 10, hrZoneKey: null, effort: 9,
+          notes: '6 × 20 sec at 90% effort · 90 sec walk recovery between each',
+        },
+      ],
     },
     progressive: {
-      type: 'long', label: 'Z2 long run', totalDurationMin: 90, hrZoneKey: 'Z2',
-      rationale: 'Peak readiness for a long aerobic run.',
-      fuelingReminder: true,
-      decouplingTarget: 5,
-      pacingTip: 'Start easy. Fuel early. Target <5% decoupling.',
+      type: 'tempo',
+      label: 'Tempo run',
+      totalDurationMin: 55,
+      hrZoneKey: 'Z3',
+      rationale: 'Fresh and ready. A tempo session will push your lactate threshold higher.',
+      segmentSpecs: [
+        {
+          label: 'Warm-up', durationMin: 10, hrZoneKey: 'Z2', workoutType: 'easy',
+        },
+        {
+          label: 'Tempo', durationMin: 25, hrZoneKey: 'Z3', workoutType: 'tempo',
+          feelDescription: "Comfortably hard — a few words but not a full conversation.",
+        },
+        {
+          label: 'Cool-down', durationMin: 10, hrZoneKey: 'Z2', workoutType: 'easy',
+          notes: 'Optional: add 4–6 strides in the last 5 min.',
+        },
+      ],
     },
   },
   peaked: {
     conservative: {
-      type: 'recovery', label: 'Z1–Z2 easy run', totalDurationMin: 30, hrZoneKey: 'Z1',
-      rationale: 'Very high form — taper or keep it easy to preserve fitness.',
-      feelDescription: 'Easy legs. Save the form for a race or big effort.',
+      type: 'recovery', label: 'Z1 easy run', totalDurationMin: 30, hrZoneKey: 'Z1',
+      rationale: "Peak form — preserve it. Easy movement only. Save the legs for when it counts.",
+      feelDescription: "Easy legs. Enjoy the form, don't spend it.",
     },
     balanced: {
-      type: 'easy', label: 'Z2 aerobic run', totalDurationMin: 60, hrZoneKey: 'Z2',
-      rationale: 'Peak form. Maintain with a steady aerobic session.',
-      feelDescription: 'Comfortable. Enjoy the legs.',
+      type: 'progression',
+      label: 'Progression run',
+      totalDurationMin: 65,
+      hrZoneKey: 'Z3',
+      rationale: 'Peak form. A progression run maintains fitness without deep fatigue.',
+      segmentSpecs: [
+        {
+          label: 'Easy', durationMin: 30, hrZoneKey: 'Z2', workoutType: 'easy',
+        },
+        {
+          label: 'Build', durationMin: 25, hrZoneKey: 'Z3', workoutType: 'tempo',
+          feelDescription: 'Each km a touch faster. Stay in control.',
+        },
+        {
+          label: 'Cool-down', durationMin: 10, hrZoneKey: 'Z2', workoutType: 'easy',
+        },
+      ],
     },
     progressive: {
-      type: 'long', label: 'Z2 long run', totalDurationMin: 90, hrZoneKey: 'Z2',
-      rationale: 'Excellent form — use it for your longest quality session.',
-      fuelingReminder: true,
-      decouplingTarget: 5,
+      type: 'threshold',
+      label: 'Threshold intervals',
+      totalDurationMin: 60,
+      hrZoneKey: 'Z4',
+      rationale: 'Peak form and fresh — ideal conditions for threshold work. Push the ceiling.',
+      segmentSpecs: [
+        {
+          label: 'Warm-up', durationMin: 10, hrZoneKey: 'Z2', workoutType: 'easy',
+        },
+        {
+          label: '4 × 8 min', durationMin: 38, hrZoneKey: 'Z4', workoutType: 'threshold',
+          notes: '4 × 8 min hard · 90 sec easy jog recovery between sets',
+          feelDescription: "Hard but controlled — can't speak in full sentences.",
+        },
+        {
+          label: 'Cool-down', durationMin: 12, hrZoneKey: 'Z2', workoutType: 'easy',
+        },
+      ],
     },
   },
 }
 
-// Below this readiness score, rest is mandatory regardless of training mode.
-// Cooked band top is 30; 35 adds a small buffer into the fatigued zone.
+// ── Build helpers ─────────────────────────────────────────────────────────────
+
 const REST_FLOOR = 35
 
 const FORCED_REST: Workout = {
@@ -135,10 +218,64 @@ interface BuildOptions {
   today?: Date
 }
 
-function buildFromRecipe(
-  recipe: RecipeBase,
-  options: BuildOptions,
-): Workout {
+function segmentProfile(
+  workoutType: WorkoutType,
+  hrZoneKey: keyof ZoneBounds,
+  bounds: ZoneBounds,
+): WorkoutProfile {
+  switch (workoutType) {
+    case 'tempo':
+    case 'threshold':
+      return { type: workoutType, hrRange: bounds[hrZoneKey] }
+    default:
+      return { type: workoutType, hrCeiling: bounds[hrZoneKey][1] }
+  }
+}
+
+function buildStructuredWorkout(recipe: RecipeBase, options: BuildOptions): Workout {
+  const { activities = [], maxHR, restHR, today } = options
+  const bounds = calcZoneBounds(maxHR, restHR)
+
+  const segments: WorkoutSegment[] = recipe.segmentSpecs!.map(spec => {
+    const seg: WorkoutSegment = { label: spec.label, durationMin: spec.durationMin }
+
+    if (spec.effort != null)    seg.effort = spec.effort
+    if (spec.feelDescription)   seg.feelDescription = spec.feelDescription
+    if (spec.notes)             seg.notes = spec.notes
+
+    if (spec.hrZoneKey) {
+      const zone = bounds[spec.hrZoneKey]
+      const isQuality = spec.hrZoneKey === 'Z3' || spec.hrZoneKey === 'Z4' || spec.hrZoneKey === 'Z5'
+      if (isQuality) {
+        seg.hrRange = zone
+      } else {
+        seg.hrCeiling = zone[1]
+      }
+    }
+
+    if (spec.workoutType && spec.hrZoneKey) {
+      const profile = segmentProfile(spec.workoutType, spec.hrZoneKey, bounds)
+      const pace = predictPaceForWorkout(profile, activities, { maxHR, restHR }, today)
+      const isEasy = spec.workoutType === 'easy' || spec.workoutType === 'recovery'
+      if (!isEasy) seg.pace = pace
+      const dist = estimateDistance(spec.durationMin, pace, isEasy)
+      if (dist) seg.distance = dist
+    }
+
+    return seg
+  })
+
+  return {
+    type: recipe.type,
+    rationale: recipe.rationale,
+    totalDurationMin: recipe.totalDurationMin,
+    segments,
+  }
+}
+
+function buildFromRecipe(recipe: RecipeBase, options: BuildOptions): Workout {
+  if (recipe.segmentSpecs) return buildStructuredWorkout(recipe, options)
+
   const { activities = [], maxHR, restHR, today } = options
   const bounds = calcZoneBounds(maxHR, restHR)
   const hrCeiling = recipe.hrZoneKey ? bounds[recipe.hrZoneKey][1] : undefined
@@ -153,9 +290,8 @@ function buildFromRecipe(
     }
   }
 
-  const profile = { type: recipe.type, hrCeiling }
+  const profile: WorkoutProfile = { type: recipe.type, hrCeiling }
   const pace = predictPaceForWorkout(profile, activities, { maxHR, restHR }, today)
-  // D-040: easy runs show distance only, no pace number in the card
   const isEasyType = recipe.type === 'easy' || recipe.type === 'recovery'
   const distance = estimateDistance(recipe.totalDurationMin, pace, isEasyType)
 
@@ -165,7 +301,7 @@ function buildFromRecipe(
     totalDurationMin: recipe.totalDurationMin,
     durationMin: recipe.totalDurationMin,
     hrCeiling,
-    pace: isEasyType ? undefined : pace,         // D-040: hide pace for easy/recovery
+    pace: isEasyType ? undefined : pace,
     distance: distance ?? undefined,
     feelDescription: recipe.feelDescription,
     pacingTip: recipe.pacingTip,
@@ -173,6 +309,8 @@ function buildFromRecipe(
     decouplingTarget: recipe.decouplingTarget,
   }
 }
+
+// ── Public API ────────────────────────────────────────────────────────────────
 
 export function buildRecommendation(
   readiness: number,
@@ -188,7 +326,7 @@ export function buildRecommendation(
   return buildFromRecipe(recipe, { activities, maxHR, restHR, today })
 }
 
-// Project tomorrow's readiness assuming zero load today (pure rest).
+// Projects tomorrow's readiness assuming zero load today (pure rest).
 export function buildTomorrowRecommendation(
   currentMetrics: { ctl: number; atl: number; tsb: number; monotony: number; acwr: number },
   mode: RecommendationMode,
@@ -197,7 +335,6 @@ export function buildTomorrowRecommendation(
   activities?: Activity[],
   today?: Date,
 ): Workout {
-  // EWMA decay with 0 load
   const ctl = currentMetrics.ctl * (1 - 1 / 42)
   const atl = currentMetrics.atl * (1 - 1 / 7)
   const tsb = ctl - atl
