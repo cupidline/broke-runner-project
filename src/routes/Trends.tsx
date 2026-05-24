@@ -4,6 +4,7 @@ import { useActivities, useActivityCount } from '@/hooks/useActivities'
 import Card from '@/components/ui/Card'
 import PMCChart from '@/components/charts/PMCChart'
 import WeeklyLoadChart from '@/components/charts/WeeklyLoadChart'
+import WeeklyKmChart from '@/components/charts/WeeklyKmChart'
 
 const RANGES = [
   { label: '4W',  days: 28 },
@@ -88,6 +89,18 @@ export default function Trends() {
           </div>
         ) : (
           <PMCChart data={history} />
+        )}
+      </Card>
+
+      {/* Weekly km */}
+      <Card>
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+          Weekly Distance (km)
+        </p>
+        {isLoading ? (
+          <Skeleton className="h-[160px]" />
+        ) : (
+          <WeeklyKmChart activities={activities} fromDate={fromDate} />
         )}
       </Card>
 
