@@ -10,6 +10,134 @@ import { useNavigate } from 'react-router-dom'
 import type { Activity } from '@/types'
 
 
+// ── ATL gauge ─────────────────────────────────────────────────────────────────
+
+const ATL_BANDS = [
+  { label: 'Fresh',       from:  0, to: 15, color: '#34D399', desc: 'Very low load — fully recovered' },
+  { label: 'Light',       from: 15, to: 30, color: '#7DD3FC', desc: 'Easy training week' },
+  { label: 'Moderate',    from: 30, to: 50, color: '#F59E0B', desc: 'Normal training load' },
+  { label: 'High',        from: 50, to: 70, color: '#F97316', desc: 'Heavy week — monitor recovery' },
+  { label: 'Overreaching',from: 70, to: 100, color: '#F87171', desc: 'Fatigue is accumulating' },
+]
+const ATL_MAX = 100
+
+function ATLGauge({ atl }: { atl: number }) {
+  const active = ATL_BANDS.find(b => atl < b.to) ?? ATL_BANDS[ATL_BANDS.length - 1]
+  const markerPct = (Math.min(Math.max(atl, 0), ATL_MAX) / ATL_MAX) * 100
+
+  return (
+    <Card>
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+        ATL · Fatigue
+      </p>
+      <p className="text-[10px] text-text-muted mb-3">7-day rolling load — how tired you are right now</p>
+      <div className="flex items-baseline justify-between mb-3">
+        <span className="text-3xl font-bold tabular-nums" style={{ color: active.color }}>
+          {Math.round(atl)}
+        </span>
+        <span className="text-sm font-semibold" style={{ color: active.color }}>{active.label}</span>
+      </div>
+      <div className="relative h-2 rounded-full overflow-hidden flex mb-1">
+        {ATL_BANDS.map(b => (
+          <div
+            key={b.label}
+            style={{
+              width: `${((b.to - b.from) / ATL_MAX) * 100}%`,
+              background: b.color,
+              opacity: b.label === active.label ? 0.6 : 0.2,
+            }}
+          />
+        ))}
+        <div
+          className="absolute top-0 bottom-0 w-0.5 bg-white rounded-full shadow"
+          style={{ left: `${markerPct}%`, transform: 'translateX(-50%)' }}
+        />
+      </div>
+      <div className="flex">
+        {ATL_BANDS.map(b => (
+          <div
+            key={b.label}
+            className="flex justify-center"
+            style={{ width: `${((b.to - b.from) / ATL_MAX) * 100}%` }}
+          >
+            <span
+              className="text-[9px] font-semibold leading-none text-center"
+              style={{ color: b.color, opacity: b.label === active.label ? 1 : 0.4 }}
+            >
+              {b.label}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-center mt-2" style={{ color: active.color }}>{active.desc}</p>
+    </Card>
+  )
+}
+
+// ── CTL gauge ─────────────────────────────────────────────────────────────────
+
+const CTL_BANDS = [
+  { label: 'Starting',    from:  0, to: 15, color: '#71717A', desc: 'Building the habit' },
+  { label: 'Building',    from: 15, to: 30, color: '#7DD3FC', desc: 'Consistent base forming' },
+  { label: 'Trained',     from: 30, to: 50, color: '#34D399', desc: 'Solid aerobic base' },
+  { label: 'Well-trained',from: 50, to: 70, color: '#F59E0B', desc: 'Strong fitness level' },
+  { label: 'Advanced',    from: 70, to: 100, color: '#A78BFA', desc: 'High training capacity' },
+]
+const CTL_MAX = 100
+
+function CTLGauge({ ctl }: { ctl: number }) {
+  const active = CTL_BANDS.find(b => ctl < b.to) ?? CTL_BANDS[CTL_BANDS.length - 1]
+  const markerPct = (Math.min(Math.max(ctl, 0), CTL_MAX) / CTL_MAX) * 100
+
+  return (
+    <Card>
+      <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
+        CTL · Fitness
+      </p>
+      <p className="text-[10px] text-text-muted mb-3">42-day rolling load — your current aerobic base</p>
+      <div className="flex items-baseline justify-between mb-3">
+        <span className="text-3xl font-bold tabular-nums" style={{ color: active.color }}>
+          {Math.round(ctl)}
+        </span>
+        <span className="text-sm font-semibold" style={{ color: active.color }}>{active.label}</span>
+      </div>
+      <div className="relative h-2 rounded-full overflow-hidden flex mb-1">
+        {CTL_BANDS.map(b => (
+          <div
+            key={b.label}
+            style={{
+              width: `${((b.to - b.from) / CTL_MAX) * 100}%`,
+              background: b.color,
+              opacity: b.label === active.label ? 0.6 : 0.2,
+            }}
+          />
+        ))}
+        <div
+          className="absolute top-0 bottom-0 w-0.5 bg-white rounded-full shadow"
+          style={{ left: `${markerPct}%`, transform: 'translateX(-50%)' }}
+        />
+      </div>
+      <div className="flex">
+        {CTL_BANDS.map(b => (
+          <div
+            key={b.label}
+            className="flex justify-center"
+            style={{ width: `${((b.to - b.from) / CTL_MAX) * 100}%` }}
+          >
+            <span
+              className="text-[9px] font-semibold leading-none text-center"
+              style={{ color: b.color, opacity: b.label === active.label ? 1 : 0.4 }}
+            >
+              {b.label}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-center mt-2" style={{ color: active.color }}>{active.desc}</p>
+    </Card>
+  )
+}
+
 // ── ACWR gauge ────────────────────────────────────────────────────────────────
 
 const SCALE_MAX = 2.0
@@ -37,14 +165,14 @@ function ACWRGauge({ acwr }: { acwr: number }) {
   return (
     <div className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <span className="text-5xl font-bold tabular-nums text-text-primary">
+        <span className="text-3xl font-bold tabular-nums text-text-primary">
           {acwr.toFixed(2)}
         </span>
         <Badge label={label} color={badgeColor} />
       </div>
 
       {/* Proportional track */}
-      <div className="relative h-3 rounded-full overflow-hidden flex">
+      <div className="relative h-2 rounded-full overflow-hidden flex">
         {ACWR_BANDS.map(b => (
           <div
             key={b.label}
@@ -282,15 +410,22 @@ export default function Load() {
 
       {/* ACWR */}
       <Card>
-        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-4">
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
           Acute:Chronic Workload Ratio
         </p>
+        <p className="text-[10px] text-text-muted mb-4">ATL ÷ CTL — are you training harder than your base can handle?</p>
         {metrics ? (
           <ACWRGauge acwr={metrics.acwr} />
         ) : (
           <div className="h-24 animate-pulse bg-muted/10 rounded-lg" />
         )}
       </Card>
+
+      {/* CTL */}
+      {metrics && <CTLGauge ctl={metrics.ctl} />}
+
+      {/* ATL */}
+      {metrics && <ATLGauge atl={metrics.atl} />}
 
       {/* Monotony + Strain */}
       {metrics && (

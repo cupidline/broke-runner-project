@@ -1,4 +1,4 @@
-# Broke Runner
+s# Broke Runner
 
 Personal training analytics for runners. Connects to Strava and tracks fitness, fatigue, readiness, and training recommendations.
 
