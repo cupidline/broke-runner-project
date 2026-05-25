@@ -23,7 +23,7 @@ function fmt(label: string, value: string) {
 }
 
 function PeriodSummary({ activities }: { activities: Activity[] }) {
-  const [days, setDays] = useState<7 | 14>(7)
+  const [days, setDays] = useState<7 | 14 | 30>(7)
 
   const stats = useMemo(() => {
     const cutoff = new Date()
@@ -64,7 +64,7 @@ function PeriodSummary({ activities }: { activities: Activity[] }) {
           Last {days} days
         </p>
         <div className="flex rounded-md overflow-hidden border border-muted/30">
-          {([7, 14] as const).map(d => (
+          {([7, 14, 30] as const).map(d => (
             <button
               key={d}
               onClick={() => setDays(d)}
