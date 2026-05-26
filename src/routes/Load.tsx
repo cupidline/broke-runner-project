@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { useLatestMetrics } from '@/hooks/useMetrics'
+import { useLiveMetrics } from '@/hooks/useLiveMetrics'
 import { useActivities, useActivityCount } from '@/hooks/useActivities'
 import { acwrRisk } from '@/lib/metrics/acwr'
 import { formatDistance, formatDate, formatTRIMP } from '@/lib/utils/format'
@@ -391,7 +391,7 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
 // ── Route ─────────────────────────────────────────────────────────────────────
 
 export default function Load() {
-  const metrics = useLatestMetrics()
+  const metrics = useLiveMetrics()
   const activities = useActivities()
   const activityCount = useActivityCount()
 
