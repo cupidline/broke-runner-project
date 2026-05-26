@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react'
 import { useLiveMetrics } from '@/hooks/useLiveMetrics'
 import { useActivities, useActivityCount } from '@/hooks/useActivities'
 import { acwrRisk } from '@/lib/metrics/acwr'
-import { formatDistance, formatDate, formatTRIMP } from '@/lib/utils/format'
+import { formatDistance, formatDate } from '@/lib/utils/format'
 import Card from '@/components/ui/Card'
 import Badge from '@/components/ui/Badge'
 import { ChevronUp, ChevronDown } from 'lucide-react'
@@ -312,7 +312,7 @@ function RunTypeDistribution({ activities }: { activities: Activity[] }) {
 
 // ── TRIMP table ───────────────────────────────────────────────────────────────
 
-type SortKey = 'startDate' | 'trimp' | 'distanceMeters'
+type SortKey = 'startDate' | 'avgHeartRate' | 'distanceMeters'
 type SortDir = 'asc' | 'desc'
 
 function TRIMPTable({ activities }: { activities: Activity[] }) {
@@ -348,9 +348,9 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
         <thead>
           <tr className="text-left border-b border-muted/20">
             {([
-              { key: 'startDate',      label: 'Date'     },
-              { key: 'distanceMeters', label: 'Dist'     },
-              { key: 'trimp',          label: 'TRIMP'    },
+              { key: 'startDate',      label: 'Date' },
+              { key: 'distanceMeters', label: 'Dist' },
+              { key: 'avgHeartRate',   label: 'HR'   },
             ] as { key: SortKey; label: string }[]).map(col => (
               <th
                 key={col.key}
@@ -374,8 +374,8 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
               <td className="py-2 pr-4 tabular-nums text-text-primary text-xs whitespace-nowrap">
                 {formatDistance(a.distanceMeters)}
               </td>
-              <td className="py-2 pr-4 tabular-nums text-accent font-medium text-xs">
-                {formatTRIMP(a.trimp!)}
+              <td className="py-2 pr-4 tabular-nums text-text-secondary text-xs">
+                {a.avgHeartRate ? `${Math.round(a.avgHeartRate)} bpm` : '—'}
               </td>
               <td className="py-2 text-xs font-medium" style={{ color: getTRIMPBand(a.trimp!).color }}>
                 {getTRIMPBand(a.trimp!).label}

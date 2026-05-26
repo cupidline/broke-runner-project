@@ -54,6 +54,11 @@ function ActivityRow({ a }: { a: ReturnType<typeof useActivities>[number] }) {
                 {formatPace(a.avgPaceSecPerKm)} /km
               </p>
             ) : null}
+            {a.avgHeartRate ? (
+              <p className="text-text-muted text-xs tabular-nums">
+                {Math.round(a.avgHeartRate)} bpm
+              </p>
+            ) : null}
           </div>
           {a.trimp !== undefined && (
             <TRIMPBarCompact trimp={a.trimp} />
