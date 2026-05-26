@@ -54,11 +54,16 @@ function ActivityRow({ a }: { a: ReturnType<typeof useActivities>[number] }) {
                 {formatPace(a.avgPaceSecPerKm)} /km
               </p>
             ) : null}
+          </div>
+          <div className="text-right w-14">
             {a.avgHeartRate ? (
-              <p className="text-text-muted text-xs tabular-nums">
-                {Math.round(a.avgHeartRate)} bpm
-              </p>
-            ) : null}
+              <>
+                <p className="text-text-primary tabular-nums text-sm">{Math.round(a.avgHeartRate)}</p>
+                <p className="text-text-muted text-xs">bpm</p>
+              </>
+            ) : (
+              <p className="text-text-muted text-sm">—</p>
+            )}
           </div>
           {a.trimp !== undefined && (
             <TRIMPBarCompact trimp={a.trimp} />
@@ -150,6 +155,7 @@ export default function Runs() {
         <span className="text-xs text-text-muted">Activity</span>
         <div className="flex gap-4 text-xs text-text-muted">
           <span>Dist / Pace</span>
+          <span className="w-14 text-right">Avg HR</span>
           <span className="w-16 text-right">TRIMP</span>
         </div>
       </div>
