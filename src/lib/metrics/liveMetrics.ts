@@ -5,6 +5,7 @@ import { calcReadiness } from './readiness'
 import { calcFitnessScore } from './fitnessScore'
 import { calcTRIMP, calcTRIMPfromRPE } from './trimp'
 import type { Activity, DailyMetrics } from '@/types'
+import { ACTIVITY_MULTIPLIER } from '@/types'
 
 const CTL_TAU = 42
 const ATL_TAU = 7
@@ -23,11 +24,13 @@ function decayPMC(ctl: number, atl: number, fromMs: number, toMs: number) {
 }
 
 function actTRIMP(a: Activity, maxHR: number, restHR: number): number {
+  let raw = 0
   if (a.trimpSource === 'hr' && a.avgHeartRate)
-    return calcTRIMP({ durationSeconds: a.durationSeconds, avgHR: a.avgHeartRate, maxHR, restHR })
-  if (a.trimpSource === 'rpe' && a.rpe)
-    return calcTRIMPfromRPE(a.durationSeconds, a.rpe)
-  return 0
+    raw = calcTRIMP({ durationSeconds: a.durationSeconds, avgHR: a.avgHeartRate, maxHR, restHR })
+  else if (a.trimpSource === 'rpe' && a.rpe)
+    raw = calcTRIMPfromRPE(a.durationSeconds, a.rpe)
+  if (raw === 0) return 0
+  return raw * (ACTIVITY_MULTIPLIER[a.type] ?? 0.5)
 }
 
 export interface LiveMetrics extends DailyMetrics {

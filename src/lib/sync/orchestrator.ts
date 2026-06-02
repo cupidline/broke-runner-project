@@ -5,13 +5,26 @@ import { getSetting, setSetting } from '@/lib/db/settings'
 import { backfillMetrics } from '@/lib/metrics/backfill'
 import type { Activity, ActivityType } from '@/types'
 
-const RUNNING_TYPES = new Set(['Run', 'TrailRun', 'VirtualRun'])
 const PER_PAGE = 200
+
+const RIDE_TYPES   = new Set(['Ride', 'VirtualRide', 'EBikeRide', 'MountainBikeRide', 'GravelRide', 'Handcycle'])
+const SWIM_TYPES   = new Set(['Swim', 'OpenWaterSwim'])
+const RACQUET_TYPES = new Set(['Badminton', 'Tennis', 'Squash', 'Racquetball', 'TableTennis', 'Pickleball'])
+const STRENGTH_TYPES = new Set(['WeightTraining', 'Workout', 'CrossFit', 'RockClimbing'])
+const CARDIO_TYPES  = new Set(['Elliptical', 'StairStepper', 'Rowing', 'Kayaking', 'Canoeing', 'Hike'])
+const TEAM_TYPES    = new Set(['Soccer', 'Football', 'Basketball', 'Rugby', 'Hockey', 'Baseball', 'Volleyball', 'Handball'])
 
 function toActivityType(sportType: string): ActivityType {
   if (sportType === 'TrailRun') return 'TrailRun'
   if (sportType === 'VirtualRun') return 'VirtualRun'
-  return 'Run'
+  if (sportType === 'Run') return 'Run'
+  if (RIDE_TYPES.has(sportType)) return 'Ride'
+  if (SWIM_TYPES.has(sportType)) return 'Swim'
+  if (RACQUET_TYPES.has(sportType)) return 'Racquet'
+  if (STRENGTH_TYPES.has(sportType)) return 'Strength'
+  if (CARDIO_TYPES.has(sportType)) return 'Cardio'
+  if (TEAM_TYPES.has(sportType)) return 'TeamSport'
+  return 'Other'
 }
 
 function mapStravaActivity(a: StravaActivity): Activity {
@@ -58,9 +71,7 @@ export async function syncActivities(
 
     const raw = await stravaFetch<StravaActivity[]>(`/athlete/activities?${params}`)
 
-    const runs = raw
-      .filter(a => RUNNING_TYPES.has(a.sport_type ?? a.type))
-      .map(mapStravaActivity)
+    const runs = raw.map(mapStravaActivity)
 
     if (runs.length > 0) await upsertActivities(runs)
 

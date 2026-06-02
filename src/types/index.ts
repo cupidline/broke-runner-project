@@ -1,4 +1,21 @@
-export type ActivityType = 'Run' | 'TrailRun' | 'VirtualRun'
+export type ActivityType =
+  | 'Run' | 'TrailRun' | 'VirtualRun'
+  | 'Ride' | 'Swim' | 'Racquet' | 'Strength' | 'Cardio' | 'TeamSport' | 'Other'
+
+export const RUNNING_TYPES = new Set<ActivityType>(['Run', 'TrailRun', 'VirtualRun'])
+
+export const ACTIVITY_MULTIPLIER: Record<ActivityType, number> = {
+  Run:        1.0,
+  TrailRun:   1.0,
+  VirtualRun: 1.0,
+  Ride:       0.8,
+  Swim:       0.8,
+  Cardio:     0.7,
+  Racquet:    0.6,
+  TeamSport:  0.6,
+  Strength:   0.4,
+  Other:      0.5,
+}
 export type ActivitySource = 'strava' | 'manual' | 'gpx' | 'fit'
 export type TRIMPSource = 'hr' | 'rpe' | 'none'
 export type HRZone = 'Z1' | 'Z2' | 'Z3' | 'Z4' | 'Z5'

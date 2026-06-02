@@ -8,6 +8,17 @@ import Badge from '@/components/ui/Badge'
 import { ChevronUp, ChevronDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Activity } from '@/types'
+import { RUNNING_TYPES, ACTIVITY_MULTIPLIER } from '@/types'
+
+const CROSS_TYPE_COLOR: Record<string, string> = {
+  Ride:       '#38BDF8',
+  Swim:       '#22D3EE',
+  Racquet:    '#A78BFA',
+  Strength:   '#FB923C',
+  Cardio:     '#34D399',
+  TeamSport:  '#F472B6',
+  Other:      '#71717A',
+}
 
 
 // ── ATL gauge ─────────────────────────────────────────────────────────────────
@@ -326,7 +337,6 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
   }
 
   const sorted = [...activities]
-    .filter(a => a.trimp !== undefined)
     .sort((a, b) => {
       const av = sortKey === 'startDate' ? a.startDate : (a[sortKey] ?? 0)
       const bv = sortKey === 'startDate' ? b.startDate : (b[sortKey] ?? 0)
@@ -366,22 +376,31 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
           </tr>
         </thead>
         <tbody>
-          {sorted.map(a => (
-            <tr key={a.id} onClick={() => navigate(`/runs/${a.id}`)} className="border-b border-muted/10 hover:bg-surface/50 transition-colors cursor-pointer">
-              <td className="py-2 pr-4 tabular-nums text-text-secondary text-xs whitespace-nowrap">
-                {formatDate(a.startDate)}
-              </td>
-              <td className="py-2 pr-4 tabular-nums text-text-primary text-xs whitespace-nowrap">
-                {formatDistance(a.distanceMeters)}
-              </td>
-              <td className="py-2 pr-4 tabular-nums text-text-secondary text-xs">
-                {a.avgHeartRate ? `${Math.round(a.avgHeartRate)} bpm` : '—'}
-              </td>
-              <td className="py-2 text-xs font-medium" style={{ color: getTRIMPBand(a.trimp!).color }}>
-                {getTRIMPBand(a.trimp!).label}
-              </td>
-            </tr>
-          ))}
+          {sorted.map(a => {
+            const isRun = RUNNING_TYPES.has(a.type)
+            const typeColor = isRun
+              ? (a.trimp != null ? getTRIMPBand(a.trimp).color : '#71717A')
+              : (CROSS_TYPE_COLOR[a.type] ?? '#71717A')
+            const typeLabel = isRun
+              ? (a.trimp != null ? getTRIMPBand(a.trimp).label : a.type)
+              : `${a.type} ×${ACTIVITY_MULTIPLIER[a.type] ?? 0.5}`
+            return (
+              <tr key={a.id} onClick={() => navigate(`/runs/${a.id}`)} className="border-b border-muted/10 hover:bg-surface/50 transition-colors cursor-pointer">
+                <td className="py-2 pr-4 tabular-nums text-text-secondary text-xs whitespace-nowrap">
+                  {formatDate(a.startDate)}
+                </td>
+                <td className="py-2 pr-4 tabular-nums text-text-primary text-xs whitespace-nowrap">
+                  {a.distanceMeters > 0 ? formatDistance(a.distanceMeters) : '—'}
+                </td>
+                <td className="py-2 pr-4 tabular-nums text-text-secondary text-xs">
+                  {a.avgHeartRate ? `${Math.round(a.avgHeartRate)} bpm` : '—'}
+                </td>
+                <td className="py-2 text-xs font-medium" style={{ color: typeColor }}>
+                  {typeLabel}
+                </td>
+              </tr>
+            )
+          })}
         </tbody>
       </table>
     </div>

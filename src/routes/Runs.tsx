@@ -4,6 +4,7 @@ import { useActivities } from '@/hooks/useActivities'
 import { formatPace, formatDate } from '@/lib/utils/format'
 import { TRIMPBarCompact } from '@/components/ui/TRIMPBar'
 import type { ActivityType } from '@/types'
+import { RUNNING_TYPES } from '@/types'
 
 // ── Filter types ──────────────────────────────────────────────────────────────
 
@@ -84,6 +85,7 @@ export default function Runs() {
   const filtered = useMemo(() => {
     const cutoff = cutoffDate(dateFilter)
     return activities.filter(a => {
+      if (!RUNNING_TYPES.has(a.type)) return false
       if (typeFilter !== 'All' && a.type !== typeFilter) return false
       if (cutoff && new Date(a.startDate) < cutoff) return false
       return true

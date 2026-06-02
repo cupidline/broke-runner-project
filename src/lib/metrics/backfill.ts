@@ -11,6 +11,7 @@ import { calcFitnessScore } from './fitnessScore'
 import { calcEnduranceCapacity } from './enduranceCapacity'
 import { calcVO2max } from './vo2max'
 import type { Activity, DailyMetrics } from '@/types'
+import { ACTIVITY_MULTIPLIER } from '@/types'
 
 function computeActivityTRIMP(
   activity: Activity,
@@ -40,8 +41,10 @@ export async function backfillMetrics(): Promise<void> {
   const updatedActivities: Activity[] = []
 
   for (const activity of activities) {
-    const trimp = computeActivityTRIMP(activity, maxHR, restHR)
-    if (trimp > 0) {
+    const rawTrimp = computeActivityTRIMP(activity, maxHR, restHR)
+    if (rawTrimp > 0) {
+      const multiplier = ACTIVITY_MULTIPLIER[activity.type] ?? 0.5
+      const trimp = rawTrimp * multiplier
       const date = activity.startDate.slice(0, 10)
       dayMap.set(date, (dayMap.get(date) ?? 0) + trimp)
       if (activity.trimp !== trimp) {
