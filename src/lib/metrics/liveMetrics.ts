@@ -4,6 +4,7 @@ import { calcStrain } from './strain'
 import { calcReadiness } from './readiness'
 import { calcFitnessScore } from './fitnessScore'
 import { calcTRIMP, calcTRIMPfromRPE } from './trimp'
+import { DEFAULT_CALIBRATION, type ReadinessCalibration } from './personalCalibration'
 import type { Activity, DailyMetrics } from '@/types'
 import { ACTIVITY_MULTIPLIER } from '@/types'
 
@@ -60,6 +61,7 @@ export function calcLiveMetrics(
   restHR: number,
   vo2max: number,
   lastEnduranceCapacity?: number,
+  calibration: ReadinessCalibration = DEFAULT_CALIBRATION,
 ): LiveMetrics {
   // ── Continuous EWMA ───────────────────────────────────────────────────────
   let ctl = prevCtl
@@ -109,7 +111,7 @@ export function calcLiveMetrics(
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const acwr = calcACWR(atl, ctl)
-  const readiness = calcReadiness({ tsb, acwr, monotony })
+  const readiness = calcReadiness({ tsb, acwr, monotony }, calibration)
   const fitnessScore = calcFitnessScore({ ctl, vo2max })
 
   return {

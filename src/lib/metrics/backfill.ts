@@ -10,6 +10,7 @@ import { calcReadiness } from './readiness'
 import { calcFitnessScore } from './fitnessScore'
 import { calcEnduranceCapacity } from './enduranceCapacity'
 import { calcVO2max } from './vo2max'
+import { calcPersonalCalibration, DEFAULT_CALIBRATION } from './personalCalibration'
 import type { Activity, DailyMetrics } from '@/types'
 import { ACTIVITY_MULTIPLIER } from '@/types'
 
@@ -63,6 +64,11 @@ export async function backfillMetrics(): Promise<void> {
 
   const vo2max = calcVO2max(maxHR, restHR)
 
+  // Derive personal calibration from the full TSB/ACWR history before scoring each day
+  const calibration = calcPersonalCalibration(
+    pmcPoints.map(p => ({ tsb: p.tsb, acwr: calcACWR(p.atl, p.ctl) })),
+  ) ?? DEFAULT_CALIBRATION
+
   // Pre-build date-indexed activity lookup for endurance capacity components
   // actsByDate: date string → [durationSeconds]
   const actsByDate = new Map<string, number[]>()
@@ -100,7 +106,7 @@ export async function backfillMetrics(): Promise<void> {
     const acwr = calcACWR(point.atl, point.ctl)
     const monotony = calcMonotony(windowLoads)
     const strain = calcStrain(windowLoads, monotony)
-    const readiness = calcReadiness({ tsb: point.tsb, acwr, monotony })
+    const readiness = calcReadiness({ tsb: point.tsb, acwr, monotony }, calibration)
     const fitnessScore = calcFitnessScore({ ctl: point.ctl, vo2max })
 
     // ── Endurance Capacity ──────────────────────────────────────────────

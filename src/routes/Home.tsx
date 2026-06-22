@@ -6,6 +6,7 @@ import { useLiveMetrics } from '@/hooks/useLiveMetrics'
 import { useActivities, useLatestActivity, useActivityCount } from '@/hooks/useActivities'
 import { useSettings } from '@/hooks/useSettings'
 import { useSync } from '@/hooks/useSync'
+import { usePersonalCalibration } from '@/hooks/usePersonalCalibration'
 import { buildRecommendation, buildTomorrowRecommendation } from '@/lib/metrics/recommendation'
 import { projectPeak } from '@/lib/metrics/readiness'
 import ReadinessCard from '@/components/home/ReadinessCard'
@@ -75,6 +76,7 @@ const AUTO_SYNC_INTERVAL_MS = 60 * 60 * 1000 // 1 hour
 
 export default function Home() {
   const metrics = useLiveMetrics()
+  const calibration = usePersonalCalibration()
   const history = useMetricsHistory(30)
   const activities = useActivities()
   const latestActivity = useLatestActivity()
@@ -135,7 +137,7 @@ export default function Home() {
     )
   }
 
-  const peak = projectPeak(metrics.ctl, metrics.atl, metrics.acwr, metrics.monotony)
+  const peak = projectPeak(metrics.ctl, metrics.atl, metrics.acwr, metrics.monotony, calibration)
 
   const today = buildRecommendation(
     metrics.readiness,

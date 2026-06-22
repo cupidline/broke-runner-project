@@ -1,31 +1,42 @@
-const SCALE_MAX = 700
+import { usePersonalTRIMPBands } from '@/hooks/usePersonalTRIMPBands'
+import type { TRIMPCalibration } from '@/lib/metrics/personalCalibration'
 
-const BANDS = [
-  { label: 'Minimal',   to: 30,       color: '#52525B' },
-  { label: 'Recovery',  to: 60,       color: '#34D399' },
-  { label: 'Easy',      to: 150,      color: '#7DD3FC' },
-  { label: 'Moderate',  to: 260,      color: '#F59E0B' },
-  { label: 'Hard',      to: 420,      color: '#F97316' },
-  { label: 'Very Hard', to: 620,      color: '#EF4444' },
-  { label: 'Extreme',   to: Infinity, color: '#7C3AED' },
+const BAND_DEFS = [
+  { label: 'Minimal',   color: '#52525B' },
+  { label: 'Recovery',  color: '#34D399' },
+  { label: 'Easy',      color: '#7DD3FC' },
+  { label: 'Moderate',  color: '#F59E0B' },
+  { label: 'Hard',      color: '#F97316' },
+  { label: 'Very Hard', color: '#EF4444' },
+  { label: 'Extreme',   color: '#7C3AED' },
 ] as const
 
-// Width of each segment as % of the display scale
-const SEGMENTS = BANDS.map((b, i) => {
-  const from = i === 0 ? 0 : BANDS[i - 1].to
-  const to   = Math.min(b.to, SCALE_MAX)
-  return { ...b, from, pct: ((to - from) / SCALE_MAX) * 100 }
-})
+function buildBands(cal: TRIMPCalibration) {
+  const thresholds = [20, cal.recovery, cal.easy, cal.moderate, cal.hard, cal.veryHard, Infinity]
+  return BAND_DEFS.map((def, i) => ({ ...def, to: thresholds[i] }))
+}
 
-function getBand(trimp: number) {
-  return BANDS.find(b => trimp < b.to) ?? BANDS[BANDS.length - 1]
+function buildSegments(cal: TRIMPCalibration) {
+  const bands = buildBands(cal)
+  return bands.map((b, i) => {
+    const from = i === 0 ? 0 : bands[i - 1].to as number
+    const to   = Math.min(b.to === Infinity ? cal.scaleMax : b.to, cal.scaleMax)
+    return { ...b, from, pct: ((to - from) / cal.scaleMax) * 100 }
+  })
+}
+
+function getBand(trimp: number, cal: TRIMPCalibration) {
+  const bands = buildBands(cal)
+  return bands.find(b => trimp < b.to) ?? bands[bands.length - 1]
 }
 
 // ── Full bar (RunDetail) ───────────────────────────────────────────────────────
 
 export function TRIMPBar({ trimp }: { trimp: number }) {
-  const band = getBand(trimp)
-  const markerPct = Math.min(trimp / SCALE_MAX, 1) * 100
+  const cal = usePersonalTRIMPBands()
+  const band = getBand(trimp, cal)
+  const segments = buildSegments(cal)
+  const markerPct = Math.min(trimp / cal.scaleMax, 1) * 100
 
   return (
     <div>
@@ -45,7 +56,7 @@ export function TRIMPBar({ trimp }: { trimp: number }) {
 
       {/* Segmented scale bar */}
       <div className="relative h-3 rounded-full overflow-hidden flex">
-        {SEGMENTS.map(s => (
+        {segments.map(s => (
           <div
             key={s.label}
             style={{ width: `${s.pct}%`, background: s.color, opacity: 0.35 }}
@@ -60,7 +71,7 @@ export function TRIMPBar({ trimp }: { trimp: number }) {
 
       {/* Band labels */}
       <div className="flex mt-1">
-        {SEGMENTS.map(s => (
+        {segments.map(s => (
           <div
             key={s.label}
             style={{ width: `${s.pct}%` }}
@@ -81,8 +92,10 @@ export function TRIMPBar({ trimp }: { trimp: number }) {
 // ── Compact bar (runs list + last-run card) ────────────────────────────────────
 
 export function TRIMPBarCompact({ trimp }: { trimp: number }) {
-  const band = getBand(trimp)
-  const markerPct = Math.min(trimp / SCALE_MAX, 1) * 100
+  const cal = usePersonalTRIMPBands()
+  const band = getBand(trimp, cal)
+  const segments = buildSegments(cal)
+  const markerPct = Math.min(trimp / cal.scaleMax, 1) * 100
 
   return (
     <div className="flex flex-col items-end gap-0.5 w-16">
@@ -90,7 +103,7 @@ export function TRIMPBarCompact({ trimp }: { trimp: number }) {
         {Math.round(trimp)}
       </span>
       <div className="relative h-1.5 w-full rounded-full overflow-hidden flex">
-        {SEGMENTS.map(s => (
+        {segments.map(s => (
           <div
             key={s.label}
             style={{ width: `${s.pct}%`, background: s.color, opacity: 0.35 }}

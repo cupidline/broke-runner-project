@@ -1,4 +1,7 @@
 import type { ReadinessBand } from '@/types'
+import { DEFAULT_CALIBRATION, type ReadinessCalibration } from './personalCalibration'
+
+export type { ReadinessCalibration }
 
 export interface ReadinessInputs {
   tsb: number
@@ -6,16 +9,18 @@ export interface ReadinessInputs {
   monotony: number
 }
 
-// TSB score: linear map −40…+20 → 0…100
-function tsbScore(tsb: number): number {
-  return Math.max(0, Math.min(100, (tsb + 40) / 60 * 100))
+// TSB score: maps personal P10…P90 range → 0…100
+function tsbScore(tsb: number, cal: ReadinessCalibration): number {
+  const range = cal.tsbHigh - cal.tsbLow
+  return Math.max(0, Math.min(100, (tsb - cal.tsbLow) / range * 100))
 }
 
-// ACWR score: peaks at 1.0 (100), linear decay toward 0.5 and 1.5, clamps to 0 outside
-function acwrScore(acwr: number): number {
+// ACWR score: peaks at personal median, linear decay toward personal P10 and P90
+function acwrScore(acwr: number, cal: ReadinessCalibration): number {
   if (acwr <= 0) return 0
-  if (acwr < 1.0) return Math.max(0, (acwr - 0.5) / 0.5 * 100)
-  return Math.max(0, (1.5 - acwr) / 0.5 * 100)
+  if (acwr < cal.acwrOptimal)
+    return Math.max(0, (acwr - (cal.acwrOptimal - cal.acwrSpread)) / cal.acwrSpread * 100)
+  return Math.max(0, ((cal.acwrOptimal + cal.acwrSpread) - acwr) / cal.acwrSpread * 100)
 }
 
 // Monotony score: 100 at ≤ 1.0, linear decay to 0 at ≥ 2.5
@@ -25,8 +30,11 @@ function monotonyScore(monotony: number): number {
   return (2.5 - monotony) / 1.5 * 100
 }
 
-export function calcReadiness({ tsb, acwr, monotony }: ReadinessInputs): number {
-  const score = tsbScore(tsb) * 0.5 + acwrScore(acwr) * 0.3 + monotonyScore(monotony) * 0.2
+export function calcReadiness(
+  { tsb, acwr, monotony }: ReadinessInputs,
+  cal: ReadinessCalibration = DEFAULT_CALIBRATION,
+): number {
+  const score = tsbScore(tsb, cal) * 0.5 + acwrScore(acwr, cal) * 0.3 + monotonyScore(monotony) * 0.2
   return Math.round(Math.max(0, Math.min(100, score)))
 }
 
@@ -62,8 +70,9 @@ export function projectPeak(
   atl: number,
   acwr: number,
   monotony: number,
+  cal: ReadinessCalibration = DEFAULT_CALIBRATION,
 ): PeakProjection {
-  const startScore = calcReadiness({ tsb: ctl - atl, acwr, monotony })
+  const startScore = calcReadiness({ tsb: ctl - atl, acwr, monotony }, cal)
   const startBand  = readinessBand(startScore)
 
   let c = ctl
@@ -78,7 +87,7 @@ export function projectPeak(
   for (let h = 1; h <= MAX_HOURS; h++) {
     c *= CTL_K_HR
     a *= ATL_K_HR
-    const score = calcReadiness({ tsb: c - a, acwr, monotony })
+    const score = calcReadiness({ tsb: c - a, acwr, monotony }, cal)
     const band  = readinessBand(score)
 
     if (score > maxScore) { maxScore = score; hoursToMax = h }

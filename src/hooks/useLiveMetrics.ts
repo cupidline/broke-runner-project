@@ -4,10 +4,12 @@ import { db } from '@/lib/db/schema'
 import { calcLiveMetrics, type LiveMetrics } from '@/lib/metrics/liveMetrics'
 import { calcVO2max } from '@/lib/metrics/vo2max'
 import { useSettings } from './useSettings'
+import { usePersonalCalibration } from './usePersonalCalibration'
 
 export function useLiveMetrics(): LiveMetrics | undefined {
   const [nowMs, setNowMs] = useState(() => Date.now())
   const settings = useSettings()
+  const calibration = usePersonalCalibration()
 
   // Tick every 60 s so readiness updates as time passes even without a new run
   useEffect(() => {
@@ -58,6 +60,7 @@ export function useLiveMetrics(): LiveMetrics | undefined {
       settings.restHR,
       vo2max,
       lastStored.enduranceCapacity,
+      calibration,
     )
-  }, [last2, recentActivities, nowMs, settings])
+  }, [last2, recentActivities, nowMs, settings, calibration])
 }
