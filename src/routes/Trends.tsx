@@ -9,6 +9,7 @@ import WeeklyKmChart from '@/components/charts/WeeklyKmChart'
 import LongRunChart from '@/components/charts/LongRunChart'
 import WeeklyRunsChart from '@/components/charts/WeeklyRunsChart'
 import ZoneTimeChart from '@/components/charts/ZoneTimeChart'
+import PaceZoneChart from '@/components/charts/PaceZoneChart'
 
 const RANGES = [
   { label: '4W',  days: 28 },
@@ -123,6 +124,18 @@ export default function Trends() {
             maxHR={settings.maxHR}
             restHR={settings.restHR}
           />
+        )}
+      </Card>
+
+      {/* Pace zones */}
+      <Card>
+        <p className="text-xs font-semibold uppercase tracking-wider text-text-secondary mb-3">
+          Pace Zones
+        </p>
+        {isLoading ? (
+          <Skeleton className="h-[140px]" />
+        ) : (
+          <PaceZoneChart activities={activities} fromDate={fromDate} />
         )}
       </Card>
 

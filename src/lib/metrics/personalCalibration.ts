@@ -29,9 +29,9 @@ export function calcTRIMPCalibration(trimpValues: number[]): TRIMPCalibration | 
   const recovery = percentile(sorted, 15)
   const easy     = percentile(sorted, 35)
   const moderate = percentile(sorted, 58)
-  const hard     = percentile(sorted, 78)
-  const veryHard = percentile(sorted, 92)
-  const scaleMax = Math.ceil(percentile(sorted, 97) * 1.1)
+  const hard     = percentile(sorted, 80)
+  const veryHard = percentile(sorted, 96)
+  const scaleMax = Math.ceil(percentile(sorted, 99) * 1.1)
 
   // Ensure strict monotonicity with minimum spacing
   const MIN_GAP = 10

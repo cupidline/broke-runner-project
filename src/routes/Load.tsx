@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useLiveMetrics } from '@/hooks/useLiveMetrics'
 import { useActivities, useActivityCount } from '@/hooks/useActivities'
+import { usePersonalTRIMPBands } from '@/hooks/usePersonalTRIMPBands'
 import { acwrRisk } from '@/lib/metrics/acwr'
 import { formatDistance, formatDate } from '@/lib/utils/format'
 import Card from '@/components/ui/Card'
@@ -9,6 +10,7 @@ import { ChevronUp, ChevronDown } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { Activity } from '@/types'
 import { RUNNING_TYPES, ACTIVITY_MULTIPLIER } from '@/types'
+import type { TRIMPCalibration } from '@/lib/metrics/personalCalibration'
 
 const CROSS_TYPE_COLOR: Record<string, string> = {
   Ride:       '#38BDF8',
@@ -239,7 +241,17 @@ const TRIMP_BANDS = [
   { label: 'Extreme',   from: 620, to: Infinity, color: '#7C3AED' },
 ]
 
-function getTRIMPBand(trimp: number) {
+// ── Pace zones ────────────────────────────────────────────────────────────────
+
+
+// ── TRIMP bands ───────────────────────────────────────────────────────────────
+
+function getTRIMPBand(trimp: number, cal?: TRIMPCalibration) {
+  if (cal) {
+    const thresholds = [20, cal.recovery, cal.easy, cal.moderate, cal.hard, cal.veryHard, Infinity]
+    const idx = thresholds.findIndex(t => trimp < t)
+    return TRIMP_BANDS[idx === -1 ? TRIMP_BANDS.length - 1 : idx]
+  }
   return TRIMP_BANDS.find(b => trimp < b.to) ?? TRIMP_BANDS[TRIMP_BANDS.length - 1]
 }
 
@@ -253,24 +265,47 @@ const PERIODS: { value: RunTypePeriod; label: string; days: number }[] = [
   { value: '6m',  label: '6m',  days: 180 },
 ]
 
+const PERIOD_SCALE: Record<RunTypePeriod, number> = {
+  '7d': 1, '14d': 2, '1m': 4.3, '3m': 13, '6m': 26,
+}
+
+const BASE_LOAD_BANDS = [
+  { label: 'Undertrained', from:    0, to:  150, color: '#71717A', desc: 'Too little load — fitness will decline' },
+  { label: 'Optimal',      from:  150, to:  600, color: '#34D399', desc: 'Training at the right level'            },
+  { label: 'High',         from:  600, to:  900, color: '#F59E0B', desc: 'Heavy load — prioritise recovery'       },
+  { label: 'Overreaching', from:  900, to: 1200, color: '#F87171', desc: 'Excessive load — risk of overtraining'  },
+]
+const BASE_LOAD_MAX = 1200
+
 function RunTypeDistribution({ activities }: { activities: Activity[] }) {
   const [period, setPeriod] = useState<RunTypePeriod>('7d')
+  const cal = usePersonalTRIMPBands()
   const days = PERIODS.find(p => p.value === period)!.days
 
-  const counts = useMemo(() => {
+  const { counts, totalTRIMP } = useMemo(() => {
     const cutoff = new Date()
     cutoff.setDate(cutoff.getDate() - days)
     const recent = activities.filter(a => a.trimp != null && new Date(a.startDate) >= cutoff)
+
     const map = new Map<string, number>()
     for (const a of recent) {
-      const band = getTRIMPBand(a.trimp!)
+      const band = getTRIMPBand(a.trimp!, cal)
       map.set(band.label, (map.get(band.label) ?? 0) + 1)
     }
-    return [...TRIMP_BANDS]
-      .reverse()
-      .map(b => ({ ...b, count: map.get(b.label) ?? 0 }))
-      .filter(b => b.count > 0)
-  }, [activities, days])
+
+    return {
+      counts: [...TRIMP_BANDS]
+        .reverse()
+        .map(b => ({ ...b, count: map.get(b.label) ?? 0 }))
+        .filter(b => b.count > 0),
+      totalTRIMP: recent.reduce((s, a) => s + (a.trimp ?? 0), 0),
+    }
+  }, [activities, days, cal])
+
+  const scale       = PERIOD_SCALE[period]
+  const weeklyEquiv = totalTRIMP / scale
+  const activeLoad  = BASE_LOAD_BANDS.find(b => weeklyEquiv < b.to) ?? BASE_LOAD_BANDS[BASE_LOAD_BANDS.length - 1]
+  const markerPct   = Math.min(weeklyEquiv / BASE_LOAD_MAX, 1) * 100
 
   const total = counts.reduce((s, b) => s + b.count, 0)
 
@@ -293,6 +328,58 @@ function RunTypeDistribution({ activities }: { activities: Activity[] }) {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Total TRIMP gauge */}
+      <div className="mb-4">
+        <div className="flex items-baseline justify-between mb-2">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-3xl font-bold tabular-nums" style={{ color: activeLoad.color }}>
+              {Math.round(totalTRIMP)}
+            </span>
+            <span className="text-xs text-text-muted">
+              TRIMP · ~{Math.round(weeklyEquiv)}/wk
+            </span>
+          </div>
+          <span className="text-sm font-semibold" style={{ color: activeLoad.color }}>
+            {activeLoad.label}
+          </span>
+        </div>
+        <div className="relative h-2 rounded-full overflow-hidden flex mb-1">
+          {BASE_LOAD_BANDS.map(b => (
+            <div
+              key={b.label}
+              style={{
+                width: `${((b.to - b.from) / BASE_LOAD_MAX) * 100}%`,
+                background: b.color,
+                opacity: b.label === activeLoad.label ? 0.6 : 0.2,
+              }}
+            />
+          ))}
+          <div
+            className="absolute top-0 bottom-0 w-0.5 bg-white rounded-full shadow"
+            style={{ left: `${markerPct}%`, transform: 'translateX(-50%)' }}
+          />
+        </div>
+        <div className="flex">
+          {BASE_LOAD_BANDS.map(b => (
+            <div
+              key={b.label}
+              className="flex justify-center"
+              style={{ width: `${((b.to - b.from) / BASE_LOAD_MAX) * 100}%` }}
+            >
+              <span
+                className="text-[9px] font-semibold leading-none"
+                style={{ color: b.color, opacity: b.label === activeLoad.label ? 1 : 0.4 }}
+              >
+                {b.label}
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-center mt-1" style={{ color: activeLoad.color }}>
+          {activeLoad.desc}
+        </p>
       </div>
 
       {total === 0 ? (
@@ -327,6 +414,7 @@ type SortKey = 'startDate' | 'avgHeartRate' | 'distanceMeters'
 type SortDir = 'asc' | 'desc'
 
 function TRIMPTable({ activities }: { activities: Activity[] }) {
+  const cal = usePersonalTRIMPBands()
   const [sortKey, setSortKey] = useState<SortKey>('startDate')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const navigate = useNavigate()
@@ -379,10 +467,10 @@ function TRIMPTable({ activities }: { activities: Activity[] }) {
           {sorted.map(a => {
             const isRun = RUNNING_TYPES.has(a.type)
             const typeColor = isRun
-              ? (a.trimp != null ? getTRIMPBand(a.trimp).color : '#71717A')
+              ? (a.trimp != null ? getTRIMPBand(a.trimp, cal).color : '#71717A')
               : (CROSS_TYPE_COLOR[a.type] ?? '#71717A')
             const typeLabel = isRun
-              ? (a.trimp != null ? getTRIMPBand(a.trimp).label : a.type)
+              ? (a.trimp != null ? getTRIMPBand(a.trimp, cal).label : a.type)
               : `${a.type} ×${ACTIVITY_MULTIPLIER[a.type] ?? 0.5}`
             return (
               <tr key={a.id} onClick={() => navigate(`/runs/${a.id}`)} className="border-b border-muted/10 hover:bg-surface/50 transition-colors cursor-pointer">
@@ -498,7 +586,7 @@ export default function Load() {
         </div>
       )}
 
-      {/* Run type distribution */}
+      {/* Run type distribution (includes TRIMP gauge + pace zones) */}
       <RunTypeDistribution activities={activities} />
 
       {/* TRIMP table */}
