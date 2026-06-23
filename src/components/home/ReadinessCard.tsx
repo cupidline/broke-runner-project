@@ -32,12 +32,23 @@ function BandMilestones({ segments, currentBand }: {
   segments: PeakProjection['segments']
   currentBand: ReadinessBand
 }) {
+  if (segments.length === 0) return null
+
   const targets = BAND_ORDER.slice(BAND_ORDER.indexOf(currentBand) + 1)
-  if (targets.length === 0) return null
 
   const milestones: { band: ReadinessBand; hoursUntil: number; hours: number; openEnded: boolean }[] = []
-  let cumHours = 0
-  for (const seg of segments) {
+
+  // Always show how long the current band persists
+  milestones.push({
+    band: currentBand,
+    hoursUntil: 0,
+    hours: segments[0].hours,
+    openEnded: segments[0].openEnded,
+  })
+
+  // Show upcoming higher bands
+  let cumHours = segments[0].hours
+  for (const seg of segments.slice(1)) {
     if ((targets as string[]).includes(seg.band)) {
       milestones.push({ band: seg.band as ReadinessBand, hoursUntil: cumHours, hours: seg.hours, openEnded: seg.openEnded })
     }
