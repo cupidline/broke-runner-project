@@ -11,12 +11,25 @@ All metrics computed client-side in the browser. No server-side processing.
 Quantifies training load for a single activity using the Banister formula.
 
 ```
-TRIMP = duration_min × HRR × e^(1.92 × HRR)
+TRIMP = duration_min × HRR × e^(1.67 × HRR) × intensityMultiplier(HRR)
 ```
 
 Where **HRR** (Heart Rate Reserve ratio) = `(avgHR − restHR) / (maxHR − restHR)`
 
-The exponential term weights harder efforts disproportionately — a tempo run at 85% HRR scores significantly more than the same duration at 65% HRR.
+The exponential term weights harder efforts disproportionately. The additional intensity multiplier reflects recovery cost: Z5 demands 48–72 h recovery vs ~12 h for Z2, a ratio the Banister exponential alone undershoots.
+
+### Intensity Multiplier
+
+| Zone | HRR threshold | Multiplier | Rationale |
+|------|--------------|-----------|-----------|
+| Z1–Z2 | < 70% | ×1.0 | Standard Banister weight |
+| Z3 | 70–80% | ×1.3 | Meaningful aerobic stress |
+| Z4 | 80–90% | ×1.7 | Threshold — significant lactate |
+| Z5 | ≥ 90% | ×2.5 | Anaerobic — high neuromuscular cost |
+
+### Sex Constant
+
+B = **1.67** (men). The original Banister paper used 1.92 for women; the sex constant accounts for differences in the catecholamine response to exercise.
 
 **When HR is unavailable**, RPE maps linearly to HRR:
 
@@ -26,28 +39,21 @@ The exponential term weights harder efforts disproportionately — a tempo run a
 | 5   | 0.70 |
 | 10  | 0.90 |
 
-### Session Load Scale
+### Session Load Bands
 
-Thresholds calibrated to MaxHR 192 / RestHR 53. TRIMP is nonlinear — duration doubles the score linearly, but intensity multiplies it exponentially.
+Thresholds are **personally calibrated** from your own run history using percentiles (requires ≥ 10 runs). Until enough data exists, population-average defaults are used.
 
-```
-  0      30      60            150            260                420              620+
-  ├───────┼────────┼─────────────┼──────────────┼─────────────────┼────────────────▶
-  Minimal  Recovery     Easy          Moderate          Hard          Very Hard   Extreme
-```
+| Category  | Default range | Calibration percentile |
+|-----------|--------------|------------------------|
+| Minimal   | 0 – 30       | below P15              |
+| Recovery  | 30 – 60      | P15                    |
+| Easy      | 60 – 150     | P35                    |
+| Moderate  | 150 – 260    | P58                    |
+| Hard      | 260 – 420    | P80                    |
+| Very Hard | 420 – 620    | P96                    |
+| Extreme   | 620+         | above P96              |
 
-| Category  | TRIMP     | Typical session example                         |
-|-----------|-----------|--------------------------------------------------|
-| Minimal   | 0 – 30    | Rest day, 20 min walk                            |
-| Recovery  | 30 – 60   | 30 min easy Z1 (≤ 129 bpm)                       |
-| Easy      | 60 – 150  | 60 min easy Z2 (~136) or 45 min tempo (~157)     |
-| Moderate  | 150 – 260 | 90 min easy Z2 (~204) or 60 min threshold (~277) |
-| Hard      | 260 – 420 | 120 min long Z2 (~272) or 2 h threshold          |
-| Very Hard | 420 – 620 | 180 min long run (~408) or race-effort session   |
-| Extreme   | 620+      | 4 h+ ultra-long effort (~543–679+)               |
-
-> The same TRIMP can be reached via different combinations of time and intensity.  
-> A 45 min tempo at Z3 (~157) scores the same as a 70 min easy Z2 run — the formula reflects that both create similar physiological stress.
+Calibration uses **run activities only** (not cross-training) to prevent artificially low thresholds from shorter, lower-intensity sessions.
 
 ---
 
@@ -161,9 +167,11 @@ Single 0–100 score summarising how ready you are to train today. Weighted comp
 Readiness = (TSB_norm × 0.50) + (ACWR_score × 0.30) + (Monotony_score × 0.20)
 ```
 
-**TSB score:** linear map −40…+20 → 0…100 (continuous — no step jumps)  
-**ACWR score:** linear ramp 0→100 from ACWR 0.5→1.0, then 100→0 from 1.0→1.5; clamps to 0 outside  
+**TSB score:** linear map from personal P10–P90 TSB range → 0–100  
+**ACWR score:** linear ramp 0→100 from ACWR 0.5→personal median, then 100→0 to 1.5; clamps to 0 outside  
 **Monotony score:** 100 at monotony ≤ 1.0, linear decay to 0 at monotony ≥ 2.5
+
+Scoring uses **personal calibration** derived from your own TSB/ACWR history (requires ≥ 28 days). Falls back to population defaults until then.
 
 **Readiness bands:**
 
@@ -225,15 +233,43 @@ Five zones computed using the **Karvonen (HRR)** method:
 HR_ceiling = RestHR + (HRR_threshold × (MaxHR − RestHR))
 ```
 
-| Zone | HRR ceiling | Character |
-|------|-------------|-----------|
-| Z1   | 55%         | Recovery |
-| Z2   | 70%         | Aerobic base |
-| Z3   | 80%         | Tempo |
-| Z4   | 90%         | Threshold |
-| Z5   | 100%        | VO2max / max effort |
+| Zone | HRR ceiling | BPM example (MaxHR 192 / RestHR 53) | Character |
+|------|-------------|--------------------------------------|-----------|
+| Z1   | 55%         | ≤ 129 bpm | Recovery |
+| Z2   | 70%         | ≤ 150 bpm | Aerobic base |
+| Z3   | 80%         | ≤ 164 bpm | Tempo |
+| Z4   | 90%         | ≤ 178 bpm | Threshold |
+| Z5   | 100%        | ≤ 192 bpm | VO2max / max effort |
 
-Zone distribution for a run counts the fraction of HR stream samples in each zone.
+**Time in Zone** assigns each run's full duration to the zone matching its `avgHR`. This is a proxy — a single run touches multiple zones — but it accurately represents the dominant effort zone for the session.
+
+---
+
+## Pace Zones
+
+**File:** `src/components/charts/PaceZoneChart.tsx`
+
+Five personal pace zones derived from your own run history using percentiles. Zones adapt to your current fitness — no fixed population tables.
+
+### Zone Boundaries
+
+Calibrated from all qualifying runs (≥ 15 min, with pace data) using even percentile splits on `avgPaceSecPerKm`:
+
+| Zone | Label     | Percentile band | Pace direction |
+|------|-----------|-----------------|----------------|
+| Z5   | Race      | 0–20th          | Fastest runs |
+| Z4   | Threshold | 20–40th         | Fast |
+| Z3   | Tempo     | 40–60th         | Middle |
+| Z2   | Easy      | 60–80th         | Comfortable |
+| Z1   | Recovery  | 80–100th        | Slowest runs |
+
+Boundaries are computed from all-time runs so they stay stable as the selected period changes. Counts/time reflect only the selected period.
+
+### Time in Zone
+
+Each run's full `durationSeconds` is assigned to whichever zone its `avgPaceSecPerKm` falls in — the same proxy method used for HR zones. A run averaged into Z2 pace likely touched Z1 and Z3 within it; lap-level split data is not stored.
+
+Requires ≥ 5 qualifying runs to display.
 
 ---
 

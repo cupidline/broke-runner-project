@@ -1,6 +1,24 @@
-s# Broke Runner
+# Broke Runner
 
-Personal training analytics for runners. Connects to Strava and tracks fitness, fatigue, readiness, and training recommendations.
+Personal training analytics for runners. Connects to Strava and tracks fitness, fatigue, readiness, and training recommendations. All computation runs client-side in the browser — no server, no account beyond Strava.
+
+## Features
+
+- **Training readiness (0–100)** — composite of TSB, ACWR, and monotony, personally calibrated to your own history
+- **PMC (Performance Management Chart)** — CTL (fitness), ATL (fatigue), TSB (form) over time
+- **TRIMP load** — Banister formula with zone-based intensity multiplier and personal band calibration
+- **Heart rate zones** — Karvonen method; time-in-zone chart per period
+- **Pace zones** — 5 personal zones auto-derived from your run percentiles; time-in-zone per period
+- **Workout recommendations** — daily suggestion with target zone, duration, and pace range
+- **Fitness Score** — composite of CTL, VO2max estimate, and aerobic efficiency
+- **Endurance Capacity** — long run history, volume, and weekly consistency
+- **Weekly charts** — load, distance, runs per week, long run progression
+- **Activity load table** — per-run TRIMP with personal band labels
+- **Run type distribution** — TRIMP gauge (undertrained → overreaching) per period
+- **Pace prediction** — data-driven pace ranges for each workout type, sourced from your recent runs only
+- **PWA** — installable on Android via Chrome "Add to Home Screen", works offline
+
+All metrics documented in [CALCULATIONS.md](./CALCULATIONS.md).
 
 ## Prerequisites
 
