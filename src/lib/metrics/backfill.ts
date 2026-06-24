@@ -66,7 +66,7 @@ export async function backfillMetrics(): Promise<void> {
 
   // Derive personal calibration from the full TSB/ACWR history before scoring each day
   const calibration = calcPersonalCalibration(
-    pmcPoints.map(p => ({ tsb: p.tsb, acwr: calcACWR(p.atl, p.ctl) })),
+    pmcPoints.map(p => ({ tsb: p.tsb, acwr: calcACWR(p.atl, p.ctl), ctl: p.ctl })),
   ) ?? DEFAULT_CALIBRATION
 
   // Pre-build date-indexed activity lookup for endurance capacity components
@@ -106,7 +106,7 @@ export async function backfillMetrics(): Promise<void> {
     const acwr = calcACWR(point.atl, point.ctl)
     const monotony = calcMonotony(windowLoads)
     const strain = calcStrain(windowLoads, monotony)
-    const readiness = calcReadiness({ tsb: point.tsb, acwr, monotony }, calibration)
+    const readiness = calcReadiness({ tsb: point.tsb, acwr, monotony, ctl: point.ctl }, calibration)
     const fitnessScore = calcFitnessScore({ ctl: point.ctl, vo2max })
 
     // ── Endurance Capacity ──────────────────────────────────────────────

@@ -11,10 +11,17 @@ export function useLiveMetrics(): LiveMetrics | undefined {
   const settings = useSettings()
   const calibration = usePersonalCalibration()
 
-  // Tick every 60 s so readiness updates as time passes even without a new run
+  // Tick every 60 s so readiness updates as time passes even without a new run.
+  // Also update on visibility change — Android PWA throttles timers in background,
+  // so nowMs goes stale until the user returns to the app.
   useEffect(() => {
-    const id = setInterval(() => setNowMs(Date.now()), 60_000)
-    return () => clearInterval(id)
+    const tick = () => setNowMs(Date.now())
+    const id = setInterval(tick, 60_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
   }, [])
 
   // Last 2 stored DailyMetrics — we use the older as the base and replay from there

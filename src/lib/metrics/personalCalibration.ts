@@ -52,6 +52,7 @@ export interface ReadinessCalibration {
   tsbHigh: number     // P90 of historical TSB — maps to readiness score 100
   acwrOptimal: number // P50 of historical ACWR — peak of the ACWR scoring curve
   acwrSpread: number  // half-width of ACWR scoring curve (derived from P10/P90 spread)
+  ctlPeak: number     // P90 of historical CTL — the fitness ceiling (100 points at or above this)
 }
 
 // Population-average fallback used until 28+ days of personal history exist
@@ -60,6 +61,7 @@ export const DEFAULT_CALIBRATION: ReadinessCalibration = {
   tsbHigh: 20,
   acwrOptimal: 1.0,
   acwrSpread: 0.5,
+  ctlPeak: 60,
 }
 
 function percentile(sorted: number[], p: number): number {
@@ -71,11 +73,11 @@ function percentile(sorted: number[], p: number): number {
 }
 
 /**
- * Derives personal readiness calibration constants from historical TSB/ACWR data.
+ * Derives personal readiness calibration constants from historical TSB/ACWR/CTL data.
  * Returns null if there isn't enough history (< 28 data points).
  */
 export function calcPersonalCalibration(
-  metrics: Array<{ tsb: number; acwr: number }>,
+  metrics: Array<{ tsb: number; acwr: number; ctl: number }>,
 ): ReadinessCalibration | null {
   if (metrics.length < 28) return null
 
@@ -85,6 +87,9 @@ export function calcPersonalCalibration(
   if (acwrValues.length < 28) return null
   const acwrSorted = [...acwrValues].sort((a, b) => a - b)
 
+  const ctlValues = metrics.map(m => m.ctl).filter(v => v > 0)
+  const ctlSorted = [...ctlValues].sort((a, b) => a - b)
+
   const tsbLow  = percentile(tsbSorted, 10)
   const tsbHigh = percentile(tsbSorted, 90)
   if (tsbHigh - tsbLow < 5) return null  // degenerate history (e.g. all rest days)
@@ -93,8 +98,13 @@ export function calcPersonalCalibration(
   const acwrSpread  = Math.max(
     acwrOptimal - percentile(acwrSorted, 10),
     percentile(acwrSorted, 90) - acwrOptimal,
-    0.2,  // floor to prevent division by near-zero
+    0.2,
   )
 
-  return { tsbLow, tsbHigh, acwrOptimal, acwrSpread }
+  // P90 CTL = your historic near-peak fitness. Scoring at or above this = 100 points.
+  const ctlPeak = ctlSorted.length >= 28
+    ? Math.max(percentile(ctlSorted, 90), 20)  // floor at 20 to avoid near-zero on sparse history
+    : DEFAULT_CALIBRATION.ctlPeak
+
+  return { tsbLow, tsbHigh, acwrOptimal, acwrSpread, ctlPeak }
 }

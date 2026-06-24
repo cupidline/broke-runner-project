@@ -111,7 +111,7 @@ export function calcLiveMetrics(
 
   // ── Derived ───────────────────────────────────────────────────────────────
   const acwr = calcACWR(atl, ctl)
-  const readiness = calcReadiness({ tsb, acwr, monotony }, calibration)
+  const readiness = calcReadiness({ tsb, acwr, monotony, ctl }, calibration)
   const fitnessScore = calcFitnessScore({ ctl, vo2max })
 
   return {

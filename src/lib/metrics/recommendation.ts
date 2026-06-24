@@ -339,7 +339,7 @@ export function buildTomorrowRecommendation(
   const atl = currentMetrics.atl * (1 - 1 / 7)
   const tsb = ctl - atl
   const acwr = ctl > 0 ? atl / ctl : 1.0
-  const tomorrowReadiness = calcReadiness({ tsb, acwr, monotony: currentMetrics.monotony })
+  const tomorrowReadiness = calcReadiness({ tsb, acwr, monotony: currentMetrics.monotony, ctl })
   if (tomorrowReadiness < REST_FLOOR) return FORCED_REST
   const band = readinessBand(tomorrowReadiness)
   const recipe = RECIPES[band][mode]

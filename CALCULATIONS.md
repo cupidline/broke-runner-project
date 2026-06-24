@@ -161,17 +161,26 @@ High strain with high monotony is worse than the same total load distributed une
 
 **File:** `src/lib/metrics/readiness.ts`
 
-Single 0–100 score summarising how ready you are to train today. Weighted composite:
+Single 0–100 score summarising how ready you are to train today.
 
 ```
-Readiness = (TSB_norm × 0.50) + (ACWR_score × 0.30) + (Monotony_score × 0.20)
+base     = TSB_score × 0.50 + ACWR_score × 0.30 + CTL_score × 0.20
+readiness = base × monotony_factor
 ```
 
-**TSB score:** linear map from personal P10–P90 TSB range → 0–100  
-**ACWR score:** linear ramp 0→100 from ACWR 0.5→personal median, then 100→0 to 1.5; clamps to 0 outside  
-**Monotony score:** 100 at monotony ≤ 1.0, linear decay to 0 at monotony ≥ 2.5
+**TSB score** — personal P10 → 0, personal P90 → 100. Fresh = high; fatigued = low.
 
-Scoring uses **personal calibration** derived from your own TSB/ACWR history (requires ≥ 28 days). Falls back to population defaults until then.
+**ACWR score** — peaks at personal ACWR median (typically ~1.0), linear decay toward personal P10 and P90 spread. In the sweet spot = high; under-training or overreaching = low.
+
+**CTL score** — `min(CTL / CTL_P90, 1) × 100`. Your personal historic peak CTL = 100; fitness floor: rested-but-detrained is capped proportionally. Prevents a long rest from faking "peak readiness."
+
+**Monotony factor** — multiplicative penalty: no effect at monotony ≤ 1.0; up to −45% at monotony ≥ 2.5. Applied after the additive base so it's significant at any fitness level.
+
+```
+monotony_factor = 1 − 0.45 × clamp((monotony − 1.0) / 1.5, 0, 1)
+```
+
+All inputs use **personal calibration** derived from your own history (requires ≥ 28 days). Falls back to population defaults until then. **100 is achievable** when TSB is at personal P90, ACWR is optimal, CTL is at peak, and monotony is low.
 
 **Readiness bands:**
 

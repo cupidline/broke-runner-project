@@ -15,6 +15,8 @@ export function usePersonalCalibration(): ReadinessCalibration {
 
   return useMemo(() => {
     if (!metrics90) return DEFAULT_CALIBRATION
-    return calcPersonalCalibration(metrics90) ?? DEFAULT_CALIBRATION
+    return calcPersonalCalibration(
+      metrics90.map(m => ({ tsb: m.tsb, acwr: m.acwr, ctl: m.ctl })),
+    ) ?? DEFAULT_CALIBRATION
   }, [metrics90])
 }

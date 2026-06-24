@@ -7,6 +7,7 @@ export interface ReadinessInputs {
   tsb: number
   acwr: number
   monotony: number
+  ctl: number
 }
 
 // TSB score: maps personal P10…P90 range → 0…100
@@ -23,19 +24,24 @@ function acwrScore(acwr: number, cal: ReadinessCalibration): number {
   return Math.max(0, ((cal.acwrOptimal + cal.acwrSpread) - acwr) / cal.acwrSpread * 100)
 }
 
-// Monotony score: 100 at ≤ 1.0, linear decay to 0 at ≥ 2.5
-function monotonyScore(monotony: number): number {
-  if (monotony <= 1.0) return 100
-  if (monotony >= 2.5) return 0
-  return (2.5 - monotony) / 1.5 * 100
+// CTL score: fitness floor. At or above personal P90 CTL = 100; proportional below.
+function ctlScore(ctl: number, cal: ReadinessCalibration): number {
+  if (cal.ctlPeak <= 0) return 100
+  return Math.min(100, (ctl / cal.ctlPeak) * 100)
+}
+
+// Monotony penalty: multiplicative. No penalty ≤ 1.0; up to 45% reduction at ≥ 2.5.
+// Multiplicative keeps the penalty significant at any fitness/freshness level.
+function monotonyFactor(monotony: number): number {
+  return 1 - 0.45 * Math.max(0, Math.min(1, (monotony - 1.0) / 1.5))
 }
 
 export function calcReadiness(
-  { tsb, acwr, monotony }: ReadinessInputs,
+  { tsb, acwr, monotony, ctl }: ReadinessInputs,
   cal: ReadinessCalibration = DEFAULT_CALIBRATION,
 ): number {
-  const score = tsbScore(tsb, cal) * 0.5 + acwrScore(acwr, cal) * 0.3 + monotonyScore(monotony) * 0.2
-  return Math.round(Math.max(0, Math.min(100, score)))
+  const base = tsbScore(tsb, cal) * 0.50 + acwrScore(acwr, cal) * 0.30 + ctlScore(ctl, cal) * 0.20
+  return Math.round(Math.max(0, Math.min(100, base * monotonyFactor(monotony))))
 }
 
 export function readinessBand(score: number): ReadinessBand {
@@ -72,7 +78,7 @@ export function projectPeak(
   monotony: number,
   cal: ReadinessCalibration = DEFAULT_CALIBRATION,
 ): PeakProjection {
-  const startScore = calcReadiness({ tsb: ctl - atl, acwr, monotony }, cal)
+  const startScore = calcReadiness({ tsb: ctl - atl, acwr, monotony, ctl }, cal)
   const startBand  = readinessBand(startScore)
 
   let c = ctl
@@ -87,7 +93,7 @@ export function projectPeak(
   for (let h = 1; h <= MAX_HOURS; h++) {
     c *= CTL_K_HR
     a *= ATL_K_HR
-    const score = calcReadiness({ tsb: c - a, acwr, monotony }, cal)
+    const score = calcReadiness({ tsb: c - a, acwr, monotony, ctl: c }, cal)
     const band  = readinessBand(score)
 
     if (score > maxScore) { maxScore = score; hoursToMax = h }
