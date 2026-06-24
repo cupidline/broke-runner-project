@@ -10,10 +10,17 @@ export interface ReadinessInputs {
   ctl: number
 }
 
-// TSB score: maps personal P10…P90 range → 0…100
+// TSB score: pivots at zero so negative TSB always scores < 50, positive always > 50.
+// Personal calibration controls the slope within each half — P90 TSB → 100, P10 TSB → 0.
+// This ensures "Fresh" is impossible with negative TSB regardless of history range.
 function tsbScore(tsb: number, cal: ReadinessCalibration): number {
-  const range = cal.tsbHigh - cal.tsbLow
-  return Math.max(0, Math.min(100, (tsb - cal.tsbLow) / range * 100))
+  if (tsb >= 0) {
+    const ceiling = Math.max(cal.tsbHigh, 10)  // floor prevents div/0 if always negative history
+    return Math.min(100, 50 + (tsb / ceiling) * 50)
+  } else {
+    const floor = Math.abs(Math.min(cal.tsbLow, -10))  // floor prevents div/0 if always positive history
+    return Math.max(0, 50 + (tsb / floor) * 50)
+  }
 }
 
 // ACWR score: peaks at personal median, linear decay toward personal P10 and P90
