@@ -9,7 +9,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
+      includeAssets: ['icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'],
       manifest: {
         name: 'Broke Runner',
         short_name: 'BrokeRunner',
